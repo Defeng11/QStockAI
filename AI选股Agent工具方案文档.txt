@@ -1,0 +1,316 @@
+本文档详细描述了一个基于Python的AI选股Agent工具的完整方案。该工具旨在帮助用户通过技术指标和基本面数据筛选A股股票，并利用多代理LLM（大型语言模型）进行智能推理，生成专业的买入/卖出信号。方案借鉴TradingAgents-CN框架的核心技术（如多代理协作和提示工程），结合AkShare/Baostock数据源，支持模型切换（OpenAI、Gemini、Qwen、DeepSeek）。
+此文档可直接复制到Gemini CLI（或类似工具）中，用于生成完整代码实现。Gemini CLI可基于此生成可运行的Python项目，包括文件结构、依赖安装和测试脚本。
+目标用户：Python开发者或量化爱好者。
+预计落地时间：Gemini CLI可快速生成原型，1-2小时调试上线。
+关键特性：实时选股、多代理辩论、模型灵活切换、数据备用机制。
+
+1. 功能描述
+工具的核心功能是自动化A股选股和信号生成，支持以下模块：
+
+数据获取与筛选：
+
+从AkShare（主源）或Baostock（备用）获取沪深京日线数据（开高低收、成交量）和财务数据（PE、ROE、营收增长）。
+筛选候选股池：基于用户指定的指标（如RSI<30、MACD金叉），限制Top 10只股票。
+
+
+指标计算：
+
+标准技术指标：RSI、MACD（用TA-Lib计算）。
+扩展指标：筹码分布（低位集中度估算）、主力资金流向（净流入模拟）。
+
+
+智能分析与信号生成：
+
+多代理LLM推理：乐观分析师（看涨因素）、悲观分析师（风险评估）、主分析师（整合辩论，输出报告）。
+输出：结构化报告，包括核心逻辑、看涨/看跌因素、最终建议（买入/卖出/观望），并标注置信度/风险评分。
+支持多模型切换：OpenAI GPT-4o、Google Gemini Pro、阿里Qwen-Max、DeepSeek Chat。
+
+
+交互与部署：
+
+命令行/Streamlit Web界面：用户输入指标阈值/股票代码，输出报告。
+扩展：可视化K线图（Matplotlib）、缓存机制（Redis，避免API限速）。
+
+
+风险与合规：
+
+仅供学习，非投资建议。
+数据隐私：本地处理，避免上传敏感信息。
+
+
+
+示例使用：
+
+输入："用RSI<30筛选Top 5股，使用Qwen-Max分析。"
+输出：候选股列表 + 每股报告（e.g., "600519: 买入，置信度85%，理由：低位筹码集中+主力流入"）。
+
+
+2. 整体思路
+方案的核心是“数据驱动 + LLM智能推理”，模仿人类投资团队决策，避免简单阈值规则。
+
+数据层：AkShare实时优先，Baostock历史备用。混合使用：实时筛选用AkShare，深度计算用Baostock。
+计算层：用TA-Lib/Numpy计算指标，生成“资料包”（结构化自然语言文本，如“RSI:25，筹码低位45%”）。
+推理层：LangGraph构建多代理工作流：
+
+并行：乐观/悲观分析师独立分析资料包。
+串行：主分析师整合观点，进行“辩论”（提示工程确保平衡）。
+LLM角色：顶级A股分析师，报告结构固定（核心逻辑 + 看涨/看跌 + 结论）。
+
+
+输出层：生成可解释报告，支持排序（置信度/风险）。
+灵活性：模型切换通过配置函数实现，易扩展到港股/美股（yfinance补充）。
+
+设计原则：
+
+模块化：数据、计算、推理分离，便于调试。
+高效：缓存结果，限制计算量（Top 10股）。
+智能：LLM处理复杂关联（e.g., “高ROE + 低筹码 = 强买入”），非公式。
+借鉴：TradingAgents-CN的多代理Graph和提示模板。
+
+潜在扩展：集成X搜索（实时舆情）、回测模块（历史模拟收益）。
+
+3. 实现方式
+技术栈
+
+语言/框架：
+
+Python 3.8+。
+数据：AkShare (主)、Baostock (备)、TA-Lib (指标)、Pandas/Numpy (处理)。
+代理：LangChain (LLM集成)、LangGraph (工作流)。
+LLM：OpenAI、Google GenAI、Qwen (DashScope)、DeepSeek。
+UI：Streamlit (Web)、Click (CLI)。
+其他：Dotenv (配置)、Matplotlib (图表)、Redis (缓存，可选)。
+
+创建虚拟环境 .venv
+
+
+依赖安装：
+bashpip install akshare baostock talib langchain langgraph langchain-openai langchain-google-genai langchain-community langchain-qwq langchain-deepseek streamlit pandas numpy matplotlib python-dotenv
+
+环境配置：
+
+.env文件：API密钥（OPENAI_API_KEY、GOOGLE_API_KEY、QWEN_API_KEY、DEEPSEEK_API_KEY）。
+Baostock：无需密钥，直接login()。
+
+
+
+架构图（文本描述）
+text用户输入 (指标/股票) → 数据获取 (AkShare/Baostock) → 指标计算 (TA-Lib/自定义) → 资料包生成
+↓
+LangGraph工作流：
+  ├── 准备节点：结构化资料包
+  ├── 并行分支：乐观分析师 (LLM1) | 悲观分析师 (LLM2)
+  └── 整合节点：主分析师 (LLM3) → 信号报告 (买入/卖出)
+↓
+输出：报告 + 可视化 (Streamlit)
+关键流程
+
+筛选候选股：全市场列表 → 指标阈值过滤 → Top N。
+单股分析：获取数据 → 计算指标 → 资料包 → 多代理推理。
+聚合：排序报告（置信度降序）。
+模型切换：init_llm()函数，根据字符串参数初始化。
+
+文件结构（Gemini CLI生成建议）
+textstock_agent/
+├── main.py              # 主入口 (Streamlit/CLI)
+├── data_handler.py      # 数据获取/计算
+├── llm_switcher.py      # LLM初始化/提示
+├── graph_workflow.py    # LangGraph定义
+├── config.env           # API密钥
+├── requirements.txt     # 依赖
+└── tests/               # 测试脚本 (e.g., test_600519.py)
+
+4. 核心代码示例
+以下是关键模块的完整代码片段。Gemini CLI可基于此扩展成全项目（e.g., “基于此代码生成Streamlit版本”）。
+4.1 数据处理 (data_handler.py)
+pythonimport akshare as ak
+import baostock as bs
+import pandas as pd
+import talib as ta
+import numpy as np
+from datetime import datetime, timedelta
+
+def get_data(stock_code: str, days: int = 100, use_backup: bool = False):
+    """获取数据：AkShare优先，Baostock备用"""
+    try:
+        if not use_backup:
+            start_date = (datetime.now() - timedelta(days=days)).strftime("%Y%m%d")
+            df = ak.stock_zh_a_hist(symbol=stock_code, period="daily", start_date=start_date)
+        else:
+            bs.login()
+            start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+            rs = bs.query_history_k_data_plus(code=f"sh.{stock_code}", fields="date,open,high,low,close,volume,turn,pb,peTTM", start_date=start_date, frequency="d")
+            df = rs.get_data()
+            bs.logout()
+            df['date'] = pd.to_datetime(df['date'])
+            df = df.sort_values('date').tail(days)
+            df.columns = ['date', 'open', 'high', 'low', 'close', 'volume', 'turn', 'pb', 'peTTM']
+            df = df.astype({'open': 'float', 'high': 'float', 'low': 'float', 'close': 'float', 'volume': 'float'})
+        return df
+    except Exception as e:
+        return f"数据错误: {e}"
+
+def calculate_indicators(df):
+    """计算标准+扩展指标"""
+    df['RSI'] = ta.RSI(df['close'], timeperiod=14)
+    macd, signal, _ = ta.MACD(df['close'])
+    df['MACD'] = macd
+    df['MACD_Signal'] = signal
+    
+    # 筹码分布
+    min_p, max_p = df['close'].min(), df['close'].max()
+    bins = np.linspace(min_p * 0.9, max_p * 1.1, 11)
+    chip_ratios = []
+    for i in range(len(bins)-1):
+        mask = (df['close'] >= bins[i]) & (df['close'] < bins[i+1])
+        total_vol = df['volume'][mask].sum()
+        ratio = total_vol / df['volume'].sum() * 100
+        chip_ratios.append(ratio)
+    low_chip = sum(chip_ratios[:3]) > 40  # 低位集中
+    
+    # 主力流向
+    df['vol_ma'] = df['volume'].rolling(20).mean()
+    df['is_high_vol'] = df['volume'] > df['vol_ma'] * 1.5
+    df['price_change'] = (df['close'] - df['open']) / df['open']
+    df['main_inflow'] = np.where((df['is_high_vol'] & (df['price_change'] > 0.02)), df['volume'] * df['price_change'], 0)
+    net_inflow = df['main_inflow'].tail(10).sum()
+    
+    return {
+        'rsi': df['RSI'].iloc[-1],
+        'macd_signal': '金叉' if df['MACD'].iloc[-1] > df['MACD_Signal'].iloc[-1] else '死叉',
+        'chip_signal': '低位集中' if low_chip else '高位套牢',
+        'main_signal': '流入' if net_inflow > 0 else '出货',
+        'pe': df['peTTM'].iloc[-1] if 'peTTM' in df else 'N/A'
+    }
+
+def prepare_package(stock_code: str, indicators: dict):
+    """生成资料包"""
+    return f"股票: {stock_code}\n技术面: RSI {indicators['rsi']:.2f}, MACD {indicators['macd_signal']}\n筹码: {indicators['chip_signal']}\n主力: {indicators['main_signal']}\n基本面: PE {indicators['pe']}"
+4.2 LLM切换与提示 (llm_switcher.py)
+pythonfrom dotenv import load_dotenv
+import os
+from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.chat_models import ChatQwen
+from langchain_deepseek import ChatDeepSeek
+from langchain_core.prompts import ChatPromptTemplate
+
+load_dotenv()
+
+def init_llm(model_name: str = "qwen-max"):
+    """模型切换"""
+    if model_name == "openai-gpt4o":
+        return ChatOpenAI(model="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
+    elif model_name == "gemini-pro":
+        return ChatGoogleGenerativeAI(model="gemini-1.5-pro", google_api_key=os.getenv("GOOGLE_API_KEY"))
+    elif model_name == "qwen-max":
+        return ChatQwen(model="qwen-max", api_key=os.getenv("QWEN_API_KEY"))
+    elif model_name == "deepseek-chat":
+        return ChatDeepSeek(model="deepseek-chat", api_key=os.getenv("DEEPSEEK_API_KEY"))
+    else:
+        raise ValueError(f"不支持: {model_name}")
+
+# 提示模板
+bullish_prompt = ChatPromptTemplate.from_template("""
+你是一位乐观A股分析师。基于资料包，列出看涨因素。
+资料包: {package}
+""")
+
+bearish_prompt = ChatPromptTemplate.from_template("""
+你是一位悲观A股分析师。基于资料包，列出看跌风险。
+资料包: {package}
+""")
+
+lead_prompt = ChatPromptTemplate.from_template("""
+你是一位主分析师。综合乐观{optimistic}和悲观{bearish}观点，生成报告：
+1. 核心逻辑
+2. 看涨因素
+3. 看跌风险
+4. 结论（买入/卖出/观望 + 置信度）
+资料包: {package}
+""")
+4.3 LangGraph工作流 (graph_workflow.py)
+pythonfrom langgraph.graph import StateGraph, END
+from typing import TypedDict
+
+class AgentState(TypedDict):
+    stock_code: str
+    package: str
+    optimistic: str
+    bearish: str
+    report: str
+
+def prepare_node(state):
+    df = get_data(state["stock_code"])
+    indicators = calculate_indicators(df)
+    state["package"] = prepare_package(state["stock_code"], indicators)
+    return state
+
+def optimistic_node(state):
+    chain = bullish_prompt | llm
+    state["optimistic"] = chain.invoke({"package": state["package"]}).content
+    return state
+
+def bearish_node(state):
+    chain = bearish_prompt | llm
+    state["bearish"] = chain.invoke({"package": state["package"]}).content
+    return state
+
+def lead_node(state):
+    chain = lead_prompt | llm
+    state["report"] = chain.invoke({
+        "package": state["package"],
+        "optimistic": state["optimistic"],
+        "bearish": state["bearish"]
+    }).content
+    return state
+
+# 构建Graph
+workflow = StateGraph(AgentState)
+workflow.add_node("prepare", prepare_node)
+workflow.add_node("optimistic", optimistic_node)
+workflow.add_node("bearish", bearish_node)
+workflow.add_node("lead", lead_node)
+
+workflow.set_entry_point("prepare")
+workflow.add_edge("prepare", "optimistic")
+workflow.add_edge("prepare", "bearish")
+workflow.add_edge("optimistic", "lead")
+workflow.add_edge("bearish", "lead")
+workflow.add_edge("lead", END)
+
+app = workflow.compile()
+4.4 主入口 (main.py - Streamlit示例)
+pythonimport streamlit as st
+from graph_workflow import app
+from llm_switcher import init_llm
+
+st.title("AI选股Agent")
+
+model = st.selectbox("选择LLM", ["qwen-max", "openai-gpt4o", "gemini-pro", "deepseek-chat"])
+llm = init_llm(model)  # 全局llm需在Graph中注入
+
+stock = st.text_input("股票代码", "600519")
+if st.button("分析"):
+    result = app.invoke({"stock_code": stock})
+    st.write(result["report"])
+4.5 筛选函数 (扩展到多股)
+pythondef screen_stocks(threshold: dict = {"rsi": 30}, max_stocks: int = 10):
+    stock_list = ak.stock_zh_a_spot_em()[:200]  # 限制
+    candidates = []
+    for _, row in stock_list.iterrows():
+        code = row['代码']
+        df = get_data(code)
+        indicators = calculate_indicators(df)
+        if indicators['rsi'] < threshold["rsi"]:
+            candidates.append((code, indicators))
+            if len(candidates) >= max_stocks:
+                break
+    return candidates  # 返回列表，循环分析
+
+5. 实施建议（给Gemini CLI）
+
+生成任务：基于以上代码和结构，生成完整项目文件夹，包括README.md（安装/运行指南）和unit tests（e.g., pytest测试600519分析）。
+优化点：添加Redis缓存、错误处理、K线图可视化。
+测试：用历史数据（2025-09-14前）回测信号准确率。
+部署：Heroku/阿里云，支持定时选股。
