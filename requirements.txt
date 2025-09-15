@@ -1,0 +1,17 @@
+# Core Dependencies
+langchain
+langgraph
+streamlit
+akshare
+baostock
+pandas
+numpy
+plotly
+
+# LLM SDKs (add as needed)
+# openai
+# google-generativeai
+# dashscope
+
+# Technical Analysis (optional, consider alternatives if TA-Lib installation is complex)
+# talib-binary
