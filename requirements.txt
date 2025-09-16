@@ -8,10 +8,9 @@ pandas
 numpy
 plotly
 
-# LLM SDKs (add as needed)
-# openai
-# google-generativeai
-# dashscope
+# LLM & LangChain Integrations
+dashscope
+langchain-community
 
 # Technical Analysis
 # The following library was installed manually from a .whl file
