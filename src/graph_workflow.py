@@ -9,7 +9,7 @@ import pandas as pd
 from typing import TypedDict, Annotated, List
 from langgraph.graph import StateGraph, END
 
-# Import our custom modules with relative paths
+# Import our custom modules
 from data_handler import get_stock_daily
 from analysis_handler import add_technical_indicators
 from llm_switcher import init_llm
@@ -30,7 +30,7 @@ class AgentState(TypedDict):
 
 def get_data_node(state: AgentState) -> AgentState:
     """Node to fetch raw stock data."""
-    print("--- Node: 获取数据 ---")
+    print("-- Node: 获取数据 --")
     try:
         code = state.get("stock_code")
         print(f"股票代码: {code}")
@@ -43,7 +43,7 @@ def get_data_node(state: AgentState) -> AgentState:
 
 def analyze_data_node(state: AgentState) -> AgentState:
     """Node to perform technical analysis and get a summary from the LLM."""
-    print("--- Node: 技术分析 ---")
+    print("-- Node: 技术分析 --")
     try:
         df = state.get("raw_data")
         indicators = state.get("indicators", ['rsi', 'macd']) # Default indicators
@@ -79,7 +79,7 @@ def analyze_data_node(state: AgentState) -> AgentState:
 
 def decision_node(state: AgentState) -> AgentState:
     """Node to make the final decision based on all gathered information."""
-    print("--- Node: 最终决策 ---")
+    print("-- Node: 最终决策 --")
     try:
         summary = state.get("technical_summary")
         code = state.get("stock_code")
@@ -118,7 +118,7 @@ def decision_node(state: AgentState) -> AgentState:
 
 def handle_error_node(state: AgentState) -> AgentState:
     """Node to handle and print errors."""
-    print("--- Node: 错误处理 ---")
+    print("-- Node: 错误处理 --")
     err = state.get("error")
     print(f"工作流发生错误: {err}")
     return {}
@@ -165,7 +165,7 @@ app = workflow.compile()
 
 # --- Test Block ---
 if __name__ == '__main__':
-    print("--- 开始测试核心工作流 ---")
+    print("-- 开始测试核心工作流 --")
     
     # Ensure you have a .env file with your DASHSCOPE_API_KEY
     
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     
     # Alternatively, get the final state
     # final_state = app.invoke(initial_state)
-    # print("\n--- 工作流执行完毕，最终状态: ---")
+    # print("\n-- 工作流执行完毕，最终状态: --")
     # print(final_state)
 
-    print("\n--- 工作流测试结束 ---")
+    print("\n-- 工作流测试结束 --")
