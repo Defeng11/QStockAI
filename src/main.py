@@ -9,7 +9,7 @@ import streamlit as st
 import pandas as pd
 
 # Import the compiled graph app from our workflow module
-from src.graph_workflow import app
+from graph_workflow import app
 
 def main():
     st.set_page_config(page_title="LiangZiXuanGu - 量子选股", layout="wide")

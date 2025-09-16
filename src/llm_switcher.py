@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- 
 
 """
 Module for switching between different Large Language Models (LLMs).
@@ -8,7 +8,7 @@ from langchain_community.chat_models import ChatTongyi
 # from langchain_openai import ChatOpenAI
 # from langchain_google_genai import ChatGoogleGenerativeAI
 
-from src import config
+import config
 
 SUPPORTED_MODELS = ["qwen-max", "qwen-turbo", "qwen-plus"]
 
@@ -53,13 +53,13 @@ def init_llm(model_name: str = "qwen-max"):
 
 # --- Test Block ---
 if __name__ == '__main__':
-    print("---" + "测试 llm_switcher 模块" + "---")
+    print("--- 测试 llm_switcher 模块 ---")
     print("该测试将尝试初始化默认的 'qwen-max' 模型。")
     print("\n要使测试成功，请确保：")
     print("1. 项目根目录下有一个名为 .env 的文件。")
     print("2. .env 文件中包含了您的有效 DASHSCOPE_API_KEY，格式如下：")
     print("   DASHSCOPE_API_KEY=\"sk-xxxxxxxxxxxxxxxxxxxxxx\"")
-    print("---" * 20)
+    print("-" * 20)
 
     llm_instance = init_llm()
 

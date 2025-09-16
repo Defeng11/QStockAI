@@ -9,10 +9,10 @@ import pandas as pd
 from typing import TypedDict, Annotated, List
 from langgraph.graph import StateGraph, END
 
-# Import our custom modules
-from src.data_handler import get_stock_daily
-from src.analysis_handler import add_technical_indicators
-from src.llm_switcher import init_llm
+# Import our custom modules with relative paths
+from data_handler import get_stock_daily
+from analysis_handler import add_technical_indicators
+from llm_switcher import init_llm
 
 # --- 1. Define the State ---
 
@@ -171,7 +171,7 @@ if __name__ == '__main__':
     
     initial_state = {
         "stock_code": "000001", # 平安银行
-        "indicators": ["rsi", "macd"]
+        "indicators": ['rsi', 'macd']
     }
     
     print(f"输入: {initial_state}")
