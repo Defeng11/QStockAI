@@ -80,9 +80,19 @@ def main():
         }
         
         st.markdown("### 分析流程")
-        raw_data_expander = st.expander("1. 数据获取结果", expanded=False)
-        indicator_expander = st.expander("2. 技术分析结果", expanded=False)
+        # Create two separate, expanded expanders as per the new request
+        data_details_expander = st.expander("详细数据", expanded=True)
+        ai_summary_expander = st.expander("AI技术面总结", expanded=True)
         final_report_container = st.container()
+
+        # --- Column Name Translation Map ---
+        COLUMN_MAP = {
+            'date': '日期', 'open': '开盘', 'close': '收盘', 'high': '最高', 'low': '最低',
+            'volume': '成交量', 'amount': '成交额', 'amplitude': '振幅', 'pct_chg': '涨跌幅',
+            'change': '涨跌额', 'turnover': '换手率', 'rsi': 'RSI', 'macd': 'MACD',
+            'macdsignal': 'Signal', 'macdhist': 'Hist', 'ma20': 'MA20', 'k': 'K', 'd': 'D',
+            'obv': 'OBV', 'bbands_upper': '布林上轨', 'bbands_middle': '布林中轨', 'bbands_lower': '布林下轨'
+        }
 
         last_known_state = {}
         try:
@@ -90,16 +100,22 @@ def main():
                 for event in app.stream(initial_state):
                     for key, value in event.items():
                         last_known_state.update(value) # Continuously update state
-                        if key == "get_data":
-                            with raw_data_expander:
-                                st.write(f"已成功获取 **{stock_code}** 的 {len(value.get('raw_data', []))} 条日线数据。")
-                                st.dataframe(value.get('raw_data', pd.DataFrame()).head())
-                        elif key == "analyze_data":
-                            with indicator_expander:
-                                st.write("数据指标计算完成，AI技术面总结如下：")
-                                st.info(value.get('technical_summary', ""))
-                                st.write("带指标的详细数据：")
-                                st.dataframe(value.get('analyzed_data', pd.DataFrame()))
+                        
+                        if key == "analyze_data":
+                            # Populate the first expander with the data table
+                            with data_details_expander:
+                                analyzed_df = value.get('analyzed_data', pd.DataFrame())
+                                if not analyzed_df.empty:
+                                    st.write("带指标的详细数据：")
+                                    display_df = analyzed_df.copy()
+                                    display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
+                                    st.dataframe(display_df)
+                                else:
+                                    st.write("未能生成详细数据。")
+                            
+                            # Populate the second expander with the AI summary
+                            with ai_summary_expander:
+                                st.info(value.get('technical_summary', "未能生成AI总结。"))
 
             # --- Final Display after stream is complete ---
             final_report_container.markdown("### 📈 最终投研报告")
