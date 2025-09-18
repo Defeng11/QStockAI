@@ -39,6 +39,49 @@
 
 ---
 
+## 开发工作流 (Development Workflow)
+
+为确保代码的稳定和可追溯性，我们严格遵循基于Git功能分支的开发模式。
+
+### 1. 日常功能开发与Bug修复
+
+这是最常用的流程，适用于所有代码修改。
+
+1.  **同步代码**: 在开始新任务前，始终先从远程 `main` 分支拉取最新代码，确保本地代码最新。
+    *   `git pull origin main`
+2.  **创建分支**: 基于最新的 `main` 分支，创建一个用于当前任务的、名称清晰的功能分支。
+    *   `git checkout -b feature/your-feature-name`
+3.  **本地开发**: 在新分支上进行代码修改、添加、删除等所有操作，并随时进行小颗粒度的提交。
+    *   `git add .`
+    *   `git commit -m "Feat(scope): Short description of the change"`
+4.  **推送分支**: 当功能开发完毕或需要您审查时，将本地分支推送到GitHub。
+    *   `git push -u origin feature/your-feature-name`
+5.  **创建Pull Request (PR)**: 在GitHub仓库页面，基于推送的新分支向 `main` 分支发起一个Pull Request。
+6.  **审查与合并**: 您（或其他协作者）在GitHub上审查代码。确认无误后，将Pull Request合并到 `main` 分支。
+7.  **清理分支**: 合并后，删除已完成任务的功能分支。
+
+### 2. 版本发布
+
+当项目积累了足够多的新功能或修复，达到一个里程碑时，我们会创建一个正式的版本。
+
+1.  **创建标签**: 在 `main` 分支的最新提交点上，创建一个带有版本号的标签。
+    *   `git tag -a v1.1.0 -m "Release version 1.1.0"`
+2.  **推送标签**: 将标签推送到GitHub。
+    *   `git push origin v1.1.0`
+3.  **创建Release**: 在GitHub的“Tags”页面，基于新标签创建正式的Release，并撰写详细的更新日志。
+
+### 3. 错误回溯
+
+根据发现错误的不同阶段，我们采用不同的安全策略。
+
+| 何时发现错误 | 状态 | 最佳回溯命令 |
+| :--- | :--- | :--- |
+| 修改后，**提交 (Commit) 前** | 本地修改，未提交 | `git checkout -- <文件名>` |
+| 提交后，**推送 (Push) 前** | 本地提交，未推送 | `git revert HEAD` |
+| **合并到主分支后** | 已推送到GitHub | `git revert <合并提交的ID>` |
+
+---
+
 ## 交互模板
 
 ### 1. 任务 (Task)
