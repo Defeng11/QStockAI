@@ -18,6 +18,10 @@ def register_indicator(name):
         return func
     return decorator
 
+def get_available_indicators() -> list[str]:
+    """Returns a list of all registered indicator names."""
+    return list(_indicator_functions.keys())
+
 @register_indicator('rsi')
 def _add_rsi(df: pd.DataFrame, timeperiod: int = 14) -> pd.DataFrame:
     """Calculates and adds the RSI (Relative Strength Index) to the DataFrame."""
@@ -31,6 +35,44 @@ def _add_macd(df: pd.DataFrame, fastperiod: int = 12, slowperiod: int = 26, sign
     df['macd'] = macd
     df['macdsignal'] = macdsignal
     df['macdhist'] = macdhist
+    return df
+
+@register_indicator('ma')
+def _add_ma(df: pd.DataFrame, timeperiod: int = 20) -> pd.DataFrame:
+    """Calculates and adds a Simple Moving Average (SMA) to the DataFrame."""
+    df[f'ma{timeperiod}'] = talib.SMA(df['close'], timeperiod=timeperiod)
+    return df
+
+@register_indicator('kd')
+def _add_kd(df: pd.DataFrame, fastk_period: int = 9, slowk_period: int = 3, slowd_period: int = 3) -> pd.DataFrame:
+    """Calculates and adds Stochastic Oscillator (%K and %D) to the DataFrame."""
+    slowk, slowd = talib.STOCH(df['high'], df['low'], df['close'], 
+                               fastk_period=fastk_period, 
+                               slowk_period=slowk_period, 
+                               slowk_matype=0, # SMA
+                               slowd_period=slowd_period, 
+                               slowd_matype=0) # SMA
+    df['k'] = slowk
+    df['d'] = slowd
+    return df
+
+@register_indicator('obv')
+def _add_obv(df: pd.DataFrame) -> pd.DataFrame:
+    """Calculates and adds On-Balance Volume (OBV) to the DataFrame."""
+    df['obv'] = talib.OBV(df['close'], df['volume'])
+    return df
+
+@register_indicator('bbands')
+def _add_bbands(df: pd.DataFrame, timeperiod: int = 20, nbdevup: int = 2, nbdevdn: int = 2) -> pd.DataFrame:
+    """Calculates and adds Bollinger Bands to the DataFrame."""
+    upper, middle, lower = talib.BBANDS(df['close'], 
+                                        timeperiod=timeperiod, 
+                                        nbdevup=nbdevup, 
+                                        nbdevdn=nbdevdn, 
+                                        matype=0) # SMA
+    df['bbands_upper'] = upper
+    df['bbands_middle'] = middle
+    df['bbands_lower'] = lower
     return df
 
 def add_technical_indicators(df: pd.DataFrame, indicators: list[str]) -> pd.DataFrame:
@@ -58,7 +100,7 @@ def add_technical_indicators(df: pd.DataFrame, indicators: list[str]) -> pd.Data
 # --- Test Block ---
 if __name__ == '__main__':
     # This block is for testing the functions in this module directly.
-    # It will fetch data for a sample stock and calculate the registered indicators.
+    # It will fetch data for a sample stock and calculate all registered indicators.
     from data_handler import get_stock_daily
 
     test_stock_code = "000001"  # 平安银行
@@ -68,11 +110,12 @@ if __name__ == '__main__':
     daily_data = get_stock_daily(test_stock_code, start_date="20230101")
 
     if not daily_data.empty:
-        # 2. Define which indicators we want to calculate
-        indicators_to_calc = ['rsi', 'macd', 'non_existent_indicator']
+        # 2. Get all available indicators dynamically
+        all_indicators = get_available_indicators()
+        print(f"\n动态获取到所有可用指标: {all_indicators}")
 
-        # 3. Add the indicators
-        data_with_indicators = add_technical_indicators(daily_data, indicators=indicators_to_calc)
+        # 3. Add all indicators
+        data_with_indicators = add_technical_indicators(daily_data, indicators=all_indicators)
 
         print("\n--- 计算结果预览 (最后5条数据) ---")
         # Display the last 5 rows to check the new columns
