@@ -52,13 +52,14 @@
 2.  **创建分支**: 基于最新的 `main` 分支，创建一个用于当前任务的、名称清晰的功能分支。
     *   `git checkout -b feature/your-feature-name`
 3.  **本地开发**: 在新分支上进行代码修改、添加、删除等所有操作，并随时进行小颗粒度的提交。
-    *   `git add .`
+    *   `git add <specific-file-or-directory>`
     *   `git commit -m "Feat(scope): Short description of the change"`
 4.  **推送分支**: 当功能开发完毕或需要您审查时，将本地分支推送到GitHub。
     *   `git push -u origin feature/your-feature-name`
-5.  **创建Pull Request (PR)**: 在GitHub仓库页面，基于推送的新分支向 `main` 分支发起一个Pull Request。
-6.  **审查与合并**: 您（或其他协作者）在GitHub上审查代码。确认无误后，将Pull Request合并到 `main` 分支。
-7.  **清理分支**: 合并后，删除已完成任务的功能分支。
+5.  **创建Pull Request (PR)**: 我将使用工具，基于推送的新分支向 `main` 分支发起一个Pull Request。
+6.  **请求合并授权**: 我会向您报告Pull Request已创建，并请求您的合并授权。
+7.  **执行合并**: 在得到您的明确同意后，我将使用工具自动将Pull Request合并到 `main` 分支，您无需再手动操作。
+8.  **清理分支**: 合并后，我将删除已完成任务的远程和本地功能分支，保持仓库整洁。
 
 ### 2. 版本发布
 
