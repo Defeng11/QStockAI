@@ -16,3 +16,6 @@ langchain-community
 # The following library was installed manually from a .whl file
 # due to compilation issues on Windows.
 TA-Lib==0.6.7
+
+# Testing
+pytest
