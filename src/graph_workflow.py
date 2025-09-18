@@ -20,6 +20,8 @@ class AgentState(TypedDict):
     """Defines the state that is passed between nodes in the graph."""
     stock_code: str
     indicators: List[str]
+    start_date: str
+    end_date: str
     raw_data: pd.DataFrame
     analyzed_data: pd.DataFrame
     technical_summary: str
@@ -33,8 +35,10 @@ def get_data_node(state: AgentState) -> AgentState:
     print("-- Node: 获取数据 --")
     try:
         code = state.get("stock_code")
-        print(f"股票代码: {code}")
-        df = get_stock_daily(code)
+        start_date = state.get("start_date")
+        end_date = state.get("end_date")
+        print(f"股票代码: {code}, 时间范围: {start_date} - {end_date}")
+        df = get_stock_daily(stock_code=code, start_date=start_date, end_date=end_date)
         if df.empty:
             return { "error": f"未能获取股票 {code} 的数据。" }
         return { "raw_data": df }
@@ -171,7 +175,9 @@ if __name__ == '__main__':
     
     initial_state = {
         "stock_code": "000001", # 平安银行
-        "indicators": ['rsi', 'macd']
+        "indicators": ['rsi', 'macd'],
+        "start_date": "20240101",
+        "end_date": "20240916"
     }
     
     print(f"输入: {initial_state}")

@@ -6,6 +6,7 @@ Provides the user interface for the LiangZiXuanGu AI Agent.
 """
 
 import streamlit as st
+from datetime import datetime, timedelta
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -51,6 +52,13 @@ def main():
     with st.sidebar:
         st.header("分析设置")
         stock_code = st.text_input("请输入股票代码", value="000001", help="例如：平安银行输入 000001")
+
+        # Date range selection
+        today = datetime.now()
+        one_year_ago = today - timedelta(days=365)
+        start_date = st.date_input("开始日期", value=one_year_ago, min_value=datetime(2010, 1, 1), max_value=today)
+        end_date = st.date_input("结束日期", value=today, min_value=start_date, max_value=today)
+
         available_indicators = ['rsi', 'macd']
         selected_indicators = st.multiselect("选择技术指标", options=available_indicators, default=available_indicators)
         start_button = st.button("开始分析", type="primary", use_container_width=True)
@@ -63,7 +71,12 @@ def main():
             st.error("请输入有效的股票代码。")
             return
 
-        initial_state = {"stock_code": stock_code, "indicators": selected_indicators}
+        initial_state = {
+            "stock_code": stock_code, 
+            "indicators": selected_indicators,
+            "start_date": start_date.strftime("%Y%m%d"),
+            "end_date": end_date.strftime("%Y%m%d"),
+        }
         
         st.markdown("### 分析流程")
         raw_data_expander = st.expander("1. 数据获取结果", expanded=False)
