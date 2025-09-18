@@ -80,8 +80,9 @@ def main():
         }
         
         st.markdown("### 分析流程")
-        # The raw_data_expander is removed as per user request.
-        indicator_expander = st.expander("1. 分析结果详情", expanded=True) # Changed title and set to expanded
+        # Create two separate, expanded expanders as per the new request
+        data_details_expander = st.expander("详细数据", expanded=True)
+        ai_summary_expander = st.expander("AI技术面总结", expanded=True)
         final_report_container = st.container()
 
         # --- Column Name Translation Map ---
@@ -99,20 +100,22 @@ def main():
                 for event in app.stream(initial_state):
                     for key, value in event.items():
                         last_known_state.update(value) # Continuously update state
-                        # Removed the get_data block
+                        
                         if key == "analyze_data":
-                            with indicator_expander:
-                                st.write("AI技术面总结：")
-                                st.info(value.get('technical_summary', ""))
-                                st.write("带指标的详细数据：")
-                                
-                                # Safely translate column names for display
+                            # Populate the first expander with the data table
+                            with data_details_expander:
                                 analyzed_df = value.get('analyzed_data', pd.DataFrame())
                                 if not analyzed_df.empty:
+                                    st.write("带指标的详细数据：")
                                     display_df = analyzed_df.copy()
-                                    # Rename only the columns that exist in the DataFrame
                                     display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
-                                    st.dataframe(display_df) # This retains search, scroll, and fullscreen functionality
+                                    st.dataframe(display_df)
+                                else:
+                                    st.write("未能生成详细数据。")
+                            
+                            # Populate the second expander with the AI summary
+                            with ai_summary_expander:
+                                st.info(value.get('technical_summary', "未能生成AI总结。"))
 
             # --- Final Display after stream is complete ---
             final_report_container.markdown("### 📈 最终投研报告")
