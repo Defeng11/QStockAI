@@ -8,11 +8,6 @@ import pandas as pd
 import numpy as np
 import pytest
 
-# Add src to the path to allow direct import of our modules
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from src.strategy_handler import apply_oversold_reversal_strategy
 
 @pytest.fixture

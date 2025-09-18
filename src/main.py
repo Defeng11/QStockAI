@@ -13,8 +13,8 @@ from plotly.subplots import make_subplots
 from langgraph.graph import END
 
 # Import the compiled graph app from our workflow module
-from graph_workflow import app
-from analysis_handler import get_available_indicators
+from .graph_workflow import app
+from .analysis_handler import get_available_indicators
 
 def create_candlestick_chart(df: pd.DataFrame):
     """Creates an interactive Candlestick chart with MAs and MACD using Plotly."""

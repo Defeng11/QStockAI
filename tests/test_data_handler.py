@@ -7,11 +7,6 @@ Unit tests for the data_handler module.
 import pandas as pd
 import pytest
 
-# Add src to the path to allow direct import of our modules
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from src.data_handler import get_stock_daily
 
 
