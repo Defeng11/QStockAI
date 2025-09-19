@@ -43,7 +43,7 @@ def create_candlestick_chart(df: pd.DataFrame):
 def main():
     # Set locale to Chinese for date formatting
     try:
-        locale.setlocale(locale.LC_TIME, 'chinese')
+        locale.setlocale(locale.LC_TIME, 'zh_CN')
     except locale.Error:
         st.warning("无法设置中文本地化，日期选择器可能仍为英文。请确保系统支持 'chinese' 区域设置。")
         
