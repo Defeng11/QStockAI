@@ -17,8 +17,5 @@ langchain-community
 # due to compilation issues on Windows.
 TA-Lib==0.6.7
 
-# UI Components
-streamlit-antd-components
-
 # Testing
 pytest

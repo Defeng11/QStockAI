@@ -6,18 +6,10 @@ Provides the user interface for the LiangZiXuanGu AI Agent.
 """
 
 import streamlit as st
-import streamlit_antd_components as sac
 from datetime import datetime, timedelta
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from langgraph.graph import END
-
-# Import the compiled graph app from our workflow module
-from graph_workflow import app
-from analysis_handler import get_available_indicators
-
-# Try to set locale for date formatting
 import locale
 
 def create_candlestick_chart(df: pd.DataFrame):
@@ -49,6 +41,12 @@ def create_candlestick_chart(df: pd.DataFrame):
     return fig
 
 def main():
+    # Set locale to Chinese for date formatting
+    try:
+        locale.setlocale(locale.LC_TIME, 'zh_CN')
+    except locale.Error:
+        st.warning("无法设置中文本地化，日期选择器可能仍为英文。请确保系统支持 'chinese' 区域设置。")
+        
     st.set_page_config(page_title="LiangZiXuanGu - 量子选股", layout="wide")
 
     st.title("量子选股 (LiangZiXuanGu) AI Agent")
@@ -58,24 +56,11 @@ def main():
         st.header("分析设置")
         stock_code = st.text_input("请输入股票代码", value="000001", help="例如：平安银行输入 000001")
 
-        # Date range selection using streamlit-antd-components
+        # Date range selection
         today = datetime.now()
         one_year_ago = today - timedelta(days=365)
-        
-        dates = sac.date_picker(
-            label='选择日期范围',
-            value=[one_year_ago, today],
-            format='YYYY-MM-DD',
-            locale='zh_CN',
-            picker='range',
-            size='middle'
-        )
-        
-        if isinstance(dates, list) and len(dates) == 2:
-            start_date, end_date = dates
-        else:
-            # Fallback or error handling if needed
-            start_date, end_date = one_year_ago, today
+        start_date = st.date_input("开始日期", value=one_year_ago, min_value=datetime(2010, 1, 1), max_value=today)
+        end_date = st.date_input("结束日期", value=today, min_value=start_date, max_value=today)
 
         # Indicator selection is now removed, we will use all available indicators by default.
         start_button = st.button("开始分析", type="primary", use_container_width=True)
