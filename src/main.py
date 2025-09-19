@@ -79,11 +79,10 @@ def main():
             "end_date": end_date.strftime("%Y%m%d"),
         }
         
-        st.markdown("### 分析流程")
-        # Create two separate, expanded expanders as per the new request
-        data_details_expander = st.expander("详细数据", expanded=True)
-        ai_summary_expander = st.expander("AI技术面总结", expanded=True)
+        # Placeholders for the final results
         final_report_container = st.container()
+        data_container = st.container()
+        chart_container = st.container()
 
         # --- Column Name Translation Map ---
         COLUMN_MAP = {
@@ -91,33 +90,21 @@ def main():
             'volume': '成交量', 'amount': '成交额', 'amplitude': '振幅', 'pct_chg': '涨跌幅',
             'change': '涨跌额', 'turnover': '换手率', 'rsi': 'RSI', 'macd': 'MACD',
             'macdsignal': 'Signal', 'macdhist': 'Hist', 'ma20': 'MA20', 'k': 'K', 'd': 'D',
-            'obv': 'OBV', 'bbands_upper': '布林上轨', 'bbands_middle': '布林中轨', 'bbands_lower': '布林下轨'
+            'obv': 'OBV', 'bbands_upper': '布林上轨', 'bbands_middle': '布林中轨', 'bbands_lower': '布林下轨',
+            'signal': '策略信号'
         }
 
         last_known_state = {}
         try:
             with st.spinner("AI Agent 正在工作中，请稍候..."):
+                # The stream now primarily runs the workflow and collects the final state
                 for event in app.stream(initial_state):
                     for key, value in event.items():
-                        last_known_state.update(value) # Continuously update state
-                        
-                        if key == "analyze_data":
-                            # Populate the first expander with the data table
-                            with data_details_expander:
-                                analyzed_df = value.get('analyzed_data', pd.DataFrame())
-                                if not analyzed_df.empty:
-                                    st.write("带指标的详细数据：")
-                                    display_df = analyzed_df.copy()
-                                    display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
-                                    st.dataframe(display_df)
-                                else:
-                                    st.write("未能生成详细数据。")
-                            
-                            # Populate the second expander with the AI summary
-                            with ai_summary_expander:
-                                st.info(value.get('technical_summary', "未能生成AI总结。"))
+                        last_known_state.update(value)
 
             # --- Final Display after stream is complete ---
+            
+            # 1. Display Final Report
             final_report_container.markdown("### 📈 最终投研报告")
             if last_known_state and not last_known_state.get("error"):
                 final_decision_text = last_known_state.get("final_decision", "未能生成报告。")
@@ -129,13 +116,25 @@ def main():
                     mime='text/markdown',
                 )
                 
+                # 2. Display Data Table with Signals
                 df_analyzed = last_known_state.get("analyzed_data")
                 if isinstance(df_analyzed, pd.DataFrame) and not df_analyzed.empty:
-                    st.markdown("---")
-                    st.subheader("📊 交互式K线图")
+                    data_container.markdown("---")
+                    data_container.subheader("策略信号详细数据")
+                    display_df = df_analyzed.copy()
+                    display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
+                    # Highlight buy signals
+                    def highlight_signals(s):
+                        return ['background-color: #90EE90' if v == 1 else '' for v in s]
+                    data_container.dataframe(display_df.style.apply(highlight_signals, subset=['策略信号']))
+
+                    # 3. Display Chart
+                    chart_container.markdown("---")
+                    chart_container.subheader("📊 交互式K线图")
                     fig = create_candlestick_chart(df_analyzed)
-                    st.plotly_chart(fig, use_container_width=True)
+                    chart_container.plotly_chart(fig, use_container_width=True)
             else:
+                # Handle errors
                 if last_known_state:
                     error_message = last_known_state.get("error", "发生未知错误。")
                 else:
