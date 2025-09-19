@@ -10,11 +10,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from langgraph.graph import END
-
-# Import the compiled graph app from our workflow module
-from graph_workflow import app
-from analysis_handler import get_available_indicators
+import locale
 
 def create_candlestick_chart(df: pd.DataFrame):
     """Creates an interactive Candlestick chart with MAs and MACD using Plotly."""
@@ -45,6 +41,12 @@ def create_candlestick_chart(df: pd.DataFrame):
     return fig
 
 def main():
+    # Set locale to Chinese for date formatting
+    try:
+        locale.setlocale(locale.LC_TIME, 'chinese')
+    except locale.Error:
+        st.warning("无法设置中文本地化，日期选择器可能仍为英文。请确保系统支持 'chinese' 区域设置。")
+        
     st.set_page_config(page_title="LiangZiXuanGu - 量子选股", layout="wide")
 
     st.title("量子选股 (LiangZiXuanGu) AI Agent")
@@ -60,8 +62,7 @@ def main():
         start_date = st.date_input("开始日期", value=one_year_ago, min_value=datetime(2010, 1, 1), max_value=today)
         end_date = st.date_input("结束日期", value=today, min_value=start_date, max_value=today)
 
-        available_indicators = get_available_indicators()
-        selected_indicators = st.multiselect("选择技术指标", options=available_indicators, default=available_indicators)
+        # Indicator selection is now removed, we will use all available indicators by default.
         start_button = st.button("开始分析", type="primary", use_container_width=True)
         st.markdown("---")
         st.header("免责声明")
@@ -74,7 +75,7 @@ def main():
 
         initial_state = {
             "stock_code": stock_code, 
-            "indicators": selected_indicators,
+            "indicators": get_available_indicators(), # Use all available indicators
             "start_date": start_date.strftime("%Y%m%d"),
             "end_date": end_date.strftime("%Y%m%d"),
         }
