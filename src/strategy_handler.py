@@ -81,7 +81,7 @@ def apply_five_step_integrated_strategy(df: pd.DataFrame) -> pd.DataFrame:
 
     # 2. Technical Trigger Conditions
     # Condition 2a: MACD golden cross (histogram turns from negative to positive)
-    cond_macd_cross = (df_strat['macd_hist'] > 0) & (df_strat['macd_hist'].shift(1) <= 0)
+    cond_macd_cross = (df_strat['macdhist'] > 0) & (df_strat['macdhist'].shift(1) <= 0)
 
     # Condition 2b: RSI rises from the oversold area
     cond_rsi_rise = (df_strat['rsi'] > 30) & (df_strat['rsi'].shift(1) <= 30)
@@ -104,7 +104,7 @@ def apply_five_step_integrated_strategy(df: pd.DataFrame) -> pd.DataFrame:
     # --- Sell Signal Conditions ---
 
     # Condition: MACD death cross (histogram turns from positive to negative)
-    sell_conditions = (df_strat['macd_hist'] < 0) & (df_strat['macd_hist'].shift(1) >= 0)
+    sell_conditions = (df_strat['macdhist'] < 0) & (df_strat['macdhist'].shift(1) >= 0)
 
     # --- Generate Signals ---
     df_strat['signal'] = 0  # Default to hold
