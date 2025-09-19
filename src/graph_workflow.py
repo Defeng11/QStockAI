@@ -11,7 +11,8 @@ from langgraph.graph import StateGraph, END
 
 # Import our custom modules
 from data_handler import get_stock_daily
-from analysis_handler import add_technical_indicators
+from analysis_handler import add_technical_indicators, get_available_indicators
+from strategy_handler import apply_oversold_reversal_strategy # New import
 from llm_switcher import init_llm
 
 # --- 1. Define the State ---
