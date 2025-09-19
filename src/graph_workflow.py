@@ -10,10 +10,10 @@ from typing import TypedDict, List
 from langgraph.graph import StateGraph, END
 
 # Import our custom modules
-from .data_handler import get_stock_daily
-from .analysis_handler import add_technical_indicators, get_available_indicators
-from .strategy_handler import apply_oversold_reversal_strategy # New import
-from .llm_switcher import init_llm
+from data_handler import get_stock_daily
+from analysis_handler import add_technical_indicators, get_available_indicators
+from strategy_handler import apply_five_step_integrated_strategy
+from llm_switcher import init_llm
 
 # --- 1. Define the State ---
 
@@ -63,8 +63,8 @@ def apply_strategy_node(state: AgentState) -> AgentState:
     print("-- Node: 3. 应用策略 --")
     try:
         df_analyzed = state.get("analyzed_data")
-        # Currently, we only have one strategy. This can be made dynamic in the future.
-        df_with_signals = apply_oversold_reversal_strategy(df_analyzed)
+        # Use the new integrated strategy
+        df_with_signals = apply_five_step_integrated_strategy(df_analyzed)
         return { "analyzed_data": df_with_signals } # Overwrite analyzed_data with the one including signals
     except Exception as e:
         return { "error": f"应用策略时出错: {e}" }
