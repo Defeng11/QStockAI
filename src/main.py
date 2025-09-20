@@ -126,6 +126,21 @@ def main():
                     return f"{val:.2f}" # Keep 2 decimal places for smaller amounts
             return val
         
+        # Custom formatter for date (YYYY-MM-DD)
+        def format_date_only(val):
+            if isinstance(val, (datetime, pd.Timestamp)):
+                return val.strftime("%Y-%m-%d")
+            return val
+
+        # Custom formatter for percentage (no rounding, with %)
+        def format_percentage_no_round(val):
+            if isinstance(val, (int, float)):
+                if math.isnan(val):
+                    return ""
+                truncated_val = math.floor(val * 100) / 100 if val >= 0 else math.ceil(val * 100) / 100
+                return f"{truncated_val:.2f}%"
+            return val
+
         # Define highlight function for dataframe
         def highlight_signals(s):
             return ['background-color: #90EE90' if v == 1 else '' for v in s]
@@ -165,19 +180,27 @@ def main():
                     display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
                     # Define columns to apply specific formatting
                     cols_2_decimal_no_round = [
-                        '开盘', '收盘', '最高', '最低', '振幅', '涨跌幅', '换手率', 'RSI', 'MACD',
+                        '开盘', '收盘', '最高', '最低', '振幅', 'RSI', 'MACD',
                         'Signal', 'Hist', 'MA20', 'K', 'D', 'OBV', '布林上轨', '布林中轨', '布林下轨'
                     ]
+                    cols_percentage = ['涨跌幅', '换手率']
                     cols_amount = ['成交额']
+                    cols_date = ['日期']
 
                     # Create a dictionary of formatters
                     formatters = {}
                     for col in cols_2_decimal_no_round:
                         if col in display_df.columns:
                             formatters[col] = format_two_decimals_no_round
+                    for col in cols_percentage:
+                        if col in display_df.columns:
+                            formatters[col] = format_percentage_no_round
                     for col in cols_amount:
                         if col in display_df.columns:
                             formatters[col] = format_amount
+                    for col in cols_date:
+                        if col in display_df.columns:
+                            formatters[col] = format_date_only
 
                     styled_df = display_df.style.format(formatters)
 
