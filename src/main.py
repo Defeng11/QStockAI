@@ -117,14 +117,15 @@ def main():
                         last_known_state.update(value) # Continuously update state
                         
                         # Update Data Details Expander
-                        # Only update if analyzed_data is present AND contains '策略信号' column
-                        if "analyzed_data" in value and isinstance(value["analyzed_data"], pd.DataFrame) and not value["analyzed_data"].empty and '策略信号' in value["analyzed_data"].columns:
+                        if "analyzed_data" in value and isinstance(value["analyzed_data"], pd.DataFrame) and not value["analyzed_data"].empty:
                             with data_details_expander:
                                 st.subheader("带指标的详细数据：")
                                 display_df = value["analyzed_data"].copy()
                                 display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
-                                # '策略信号' column is guaranteed to be here by the outer if condition
-                                st.dataframe(display_df.style.apply(highlight_signals, subset=['策略信号']))
+                                if '策略信号' in display_df.columns:
+                                    st.dataframe(display_df.style.apply(highlight_signals, subset=['策略信号']))
+                                else:
+                                    st.dataframe(display_df)
                         
                         # Update AI Summary Expander (now includes strategy summary)
                         if "technical_summary" in value or "strategy_summary" in value:
