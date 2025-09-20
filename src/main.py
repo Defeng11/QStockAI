@@ -116,16 +116,7 @@ def main():
                     for key, value in event.items():
                         last_known_state.update(value) # Continuously update state
                         
-                        # Update Data Details Expander
-                        if "analyzed_data" in value and isinstance(value["analyzed_data"], pd.DataFrame) and not value["analyzed_data"].empty:
-                            with data_details_expander:
-                                st.subheader("带指标的详细数据：")
-                                display_df = value["analyzed_data"].copy()
-                                display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
-                                if '策略信号' in display_df.columns:
-                                    st.dataframe(display_df.style.apply(highlight_signals, subset=['策略信号']))
-                                else:
-                                    st.dataframe(display_df)
+
                         
                         # Update AI Summary Expander (now includes strategy summary)
                         if "technical_summary" in value or "strategy_summary" in value:
@@ -140,6 +131,18 @@ def main():
 
             # --- Final Display after stream is complete ---
             
+            # Display Data Table in expander after stream is complete
+            df_analyzed = last_known_state.get("analyzed_data")
+            if isinstance(df_analyzed, pd.DataFrame) and not df_analyzed.empty:
+                with data_details_expander:
+                    st.subheader("带指标的详细数据：")
+                    display_df = df_analyzed.copy()
+                    display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
+                    if '策略信号' in display_df.columns:
+                        st.dataframe(display_df.style.apply(highlight_signals, subset=['策略信号']))
+                    else:
+                        st.dataframe(display_df)
+
             # 1. Display Final Report
             final_report_container.markdown("### 📈 最终投研报告")
             if last_known_state and not last_known_state.get("error"):
