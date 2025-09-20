@@ -8,7 +8,7 @@ from langchain_community.chat_models import ChatTongyi
 # from langchain_openai import ChatOpenAI
 # from langchain_google_genai import ChatGoogleGenerativeAI
 
-import config
+import src.config
 
 SUPPORTED_MODELS = ["qwen-max", "qwen-turbo", "qwen-plus"]
 

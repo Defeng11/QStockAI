@@ -10,10 +10,10 @@ from typing import TypedDict, List
 from langgraph.graph import StateGraph, END
 
 # Import our custom modules
-from data_handler import get_stock_daily
-from analysis_handler import add_technical_indicators, get_available_indicators
-from strategy_handler import apply_five_step_integrated_strategy
-from llm_switcher import init_llm
+from src.data_handler import get_stock_daily
+from src.analysis_handler import add_technical_indicators, get_available_indicators
+from src.strategy_handler import apply_five_step_integrated_strategy
+from src.llm_switcher import init_llm
 
 # --- 1. Define the State ---
 

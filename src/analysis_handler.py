@@ -101,7 +101,7 @@ def add_technical_indicators(df: pd.DataFrame, indicators: list[str]) -> pd.Data
 if __name__ == '__main__':
     # This block is for testing the functions in this module directly.
     # It will fetch data for a sample stock and calculate all registered indicators.
-    from data_handler import get_stock_daily
+    from src.data_handler import get_stock_daily
 
     test_stock_code = "000001"  # 平安银行
     print(f"--- 测试 analysis_handler 模块 (股票代码: {test_stock_code}) ---")
