@@ -101,6 +101,31 @@ def main():
             'signal': '策略信号'
         }
         
+        import math
+
+        # Custom formatter for 2 decimal places, no rounding
+        def format_two_decimals_no_round(val):
+            if isinstance(val, (int, float)):
+                if math.isnan(val):
+                    return ""
+                # Truncate to 2 decimal places
+                truncated_val = math.floor(val * 100) / 100 if val >= 0 else math.ceil(val * 100) / 100
+                return f"{truncated_val:.2f}"
+            return val
+
+        # Custom formatter for amount (成交额)
+        def format_amount(val):
+            if isinstance(val, (int, float)):
+                if math.isnan(val):
+                    return ""
+                if val >= 100000000: # 亿
+                    return f"{val / 100000000:.4f}亿"
+                elif val >= 10000: # 万
+                    return f"{val / 10000:.4f}万"
+                else:
+                    return f"{val:.2f}" # Keep 2 decimal places for smaller amounts
+            return val
+        
         # Define highlight function for dataframe
         def highlight_signals(s):
             return ['background-color: #90EE90' if v == 1 else '' for v in s]
@@ -138,10 +163,28 @@ def main():
                     st.subheader("带指标的详细数据：")
                     display_df = df_analyzed.copy()
                     display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
+                    # Define columns to apply specific formatting
+                    cols_2_decimal_no_round = [
+                        '开盘', '收盘', '最高', '最低', '振幅', '涨跌幅', '换手率', 'RSI', 'MACD',
+                        'Signal', 'Hist', 'MA20', 'K', 'D', 'OBV', '布林上轨', '布林中轨', '布林下轨'
+                    ]
+                    cols_amount = ['成交额']
+
+                    # Create a dictionary of formatters
+                    formatters = {}
+                    for col in cols_2_decimal_no_round:
+                        if col in display_df.columns:
+                            formatters[col] = format_two_decimals_no_round
+                    for col in cols_amount:
+                        if col in display_df.columns:
+                            formatters[col] = format_amount
+
+                    styled_df = display_df.style.format(formatters)
+
                     if '策略信号' in display_df.columns:
-                        st.dataframe(display_df.style.apply(highlight_signals, subset=['策略信号']))
+                        st.dataframe(styled_df.apply(highlight_signals, subset=['策略信号']))
                     else:
-                        st.dataframe(display_df)
+                        st.dataframe(styled_df)
 
             # 1. Display Final Report
             final_report_container.markdown("### 📈 最终投研报告")
