@@ -122,7 +122,10 @@ def main():
                                 st.subheader("带指标的详细数据：")
                                 display_df = value["analyzed_data"].copy()
                                 display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
-                                st.dataframe(display_df.style.apply(highlight_signals, subset=['策略信号']))
+                                if '策略信号' in display_df.columns:
+                                    st.dataframe(display_df.style.apply(highlight_signals, subset=['策略信号']))
+                                else:
+                                    st.dataframe(display_df)
                         
                         # Update AI Summary Expander (now includes strategy summary)
                         if "technical_summary" in value or "strategy_summary" in value:
