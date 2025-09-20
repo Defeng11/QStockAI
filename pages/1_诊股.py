@@ -152,11 +152,15 @@ def main():
 
         try:
             with st.spinner("AI Agent 正在工作中，请稍候..."):
-                for event in app.stream(initial_state):
+                # Debugging: Check what app.stream returns
+                stream_result = app.stream(initial_state)
+                if stream_result is None:
+                    st.error("错误：工作流流式处理返回了 None。这通常意味着工作流在启动时就遇到了问题，例如API Key未设置或无效。请检查您的配置和日志。")
+                    return # Exit if stream is None
+
+                for event in stream_result: # Iterate over the result
                     for key, value in event.items():
                         last_known_state.update(value) # Continuously update state
-                        
-
                         
                         # Update AI Summary Expander (now includes strategy summary)
                         if "technical_summary" in value or "strategy_summary" in value:
