@@ -13,8 +13,8 @@ from plotly.subplots import make_subplots
 from langgraph.graph import END
 
 # Import the compiled graph app from our workflow module
-from graph_workflow import app
-from analysis_handler import get_available_indicators
+from src.graph_workflow import app
+from src.analysis_handler import get_available_indicators
 
 # Try to set locale for date formatting
 import locale
