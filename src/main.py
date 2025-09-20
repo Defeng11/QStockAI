@@ -16,6 +16,9 @@ from langgraph.graph import END
 from graph_workflow import app
 from analysis_handler import get_available_indicators
 
+# Try to set locale for date formatting
+import locale
+
 def create_candlestick_chart(df: pd.DataFrame):
     """Creates an interactive Candlestick chart with MAs and MACD using Plotly."""
     if df.empty:
@@ -45,6 +48,12 @@ def create_candlestick_chart(df: pd.DataFrame):
     return fig
 
 def main():
+    # Set locale to Chinese for date formatting
+    try:
+        locale.setlocale(locale.LC_TIME, 'zh_CN')
+    except locale.Error:
+        st.warning("无法设置中文本地化，日期选择器可能仍为英文。请确保系统支持 'chinese' 区域设置。")
+        
     st.set_page_config(page_title="LiangZiXuanGu - 量子选股", layout="wide")
 
     st.title("量子选股 (LiangZiXuanGu) AI Agent")
@@ -60,8 +69,7 @@ def main():
         start_date = st.date_input("开始日期", value=one_year_ago, min_value=datetime(2010, 1, 1), max_value=today)
         end_date = st.date_input("结束日期", value=today, min_value=start_date, max_value=today)
 
-        available_indicators = get_available_indicators()
-        selected_indicators = st.multiselect("选择技术指标", options=available_indicators, default=available_indicators)
+        # Indicator selection is now removed, we will use all available indicators by default.
         start_button = st.button("开始分析", type="primary", use_container_width=True)
         st.markdown("---")
         st.header("免责声明")
@@ -74,16 +82,14 @@ def main():
 
         initial_state = {
             "stock_code": stock_code, 
-            "indicators": selected_indicators,
+            "indicators": get_available_indicators(), # Use all available indicators
             "start_date": start_date.strftime("%Y%m%d"),
             "end_date": end_date.strftime("%Y%m%d"),
         }
         
-        st.markdown("### 分析流程")
-        # Create two separate, expanded expanders as per the new request
-        data_details_expander = st.expander("详细数据", expanded=True)
-        ai_summary_expander = st.expander("AI技术面总结", expanded=True)
+        # Placeholders for the final results
         final_report_container = st.container()
+        chart_container = st.container() # Chart will still be displayed at the end
 
         # --- Column Name Translation Map ---
         COLUMN_MAP = {
@@ -91,33 +97,119 @@ def main():
             'volume': '成交量', 'amount': '成交额', 'amplitude': '振幅', 'pct_chg': '涨跌幅',
             'change': '涨跌额', 'turnover': '换手率', 'rsi': 'RSI', 'macd': 'MACD',
             'macdsignal': 'Signal', 'macdhist': 'Hist', 'ma20': 'MA20', 'k': 'K', 'd': 'D',
-            'obv': 'OBV', 'bbands_upper': '布林上轨', 'bbands_middle': '布林中轨', 'bbands_lower': '布林下轨'
+            'obv': 'OBV', 'bbands_upper': '布林上轨', 'bbands_middle': '布林中轨', 'bbands_lower': '布林下轨',
+            'signal': '策略信号'
         }
+        
+        import math
+
+        # Custom formatter for 2 decimal places, no rounding
+        def format_two_decimals_no_round(val):
+            if isinstance(val, (int, float)):
+                if math.isnan(val):
+                    return ""
+                # Truncate to 2 decimal places
+                truncated_val = math.floor(val * 100) / 100 if val >= 0 else math.ceil(val * 100) / 100
+                return f"{truncated_val:.2f}"
+            return val
+
+        # Custom formatter for amount (成交额)
+        def format_amount(val):
+            if isinstance(val, (int, float)):
+                if math.isnan(val):
+                    return ""
+                if val >= 100000000: # 亿
+                    return f"{val / 100000000:.4f}亿"
+                elif val >= 10000: # 万
+                    return f"{val / 10000:.4f}万"
+                else:
+                    return f"{val:.2f}" # Keep 2 decimal places for smaller amounts
+            return val
+        
+        # Custom formatter for date (YYYY-MM-DD)
+        def format_date_only(val):
+            if isinstance(val, (datetime, pd.Timestamp)):
+                return val.strftime("%Y-%m-%d")
+            return val
+
+        # Custom formatter for percentage (no rounding, with %)
+        def format_percentage_no_round(val):
+            if isinstance(val, (int, float)):
+                if math.isnan(val):
+                    return ""
+                truncated_val = math.floor(val * 100) / 100 if val >= 0 else math.ceil(val * 100) / 100
+                return f"{truncated_val:.2f}%"
+            return val
+
+        # Define highlight function for dataframe
+        def highlight_signals(s):
+            return ['background-color: #90EE90' if v == 1 else '' for v in s]
 
         last_known_state = {}
+        st.markdown("### 分析流程")
+        data_details_expander = st.expander("详细数据", expanded=True)
+        ai_summary_expander = st.expander("AI技术面总结", expanded=True)
+
         try:
             with st.spinner("AI Agent 正在工作中，请稍候..."):
                 for event in app.stream(initial_state):
                     for key, value in event.items():
                         last_known_state.update(value) # Continuously update state
                         
-                        if key == "analyze_data":
-                            # Populate the first expander with the data table
-                            with data_details_expander:
-                                analyzed_df = value.get('analyzed_data', pd.DataFrame())
-                                if not analyzed_df.empty:
-                                    st.write("带指标的详细数据：")
-                                    display_df = analyzed_df.copy()
-                                    display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
-                                    st.dataframe(display_df)
-                                else:
-                                    st.write("未能生成详细数据。")
-                            
-                            # Populate the second expander with the AI summary
+
+                        
+                        # Update AI Summary Expander (now includes strategy summary)
+                        if "technical_summary" in value or "strategy_summary" in value:
                             with ai_summary_expander:
-                                st.info(value.get('technical_summary', "未能生成AI总结。"))
+                                st.subheader("AI技术面总结与策略信号：")
+                                if "technical_summary" in value:
+                                    st.markdown(value["technical_summary"])
+                                if "strategy_summary" in value: # This will be populated from graph_workflow
+                                    st.markdown(value["strategy_summary"])
+                                if "technical_summary" not in value and "strategy_summary" not in value:
+                                    st.info("未能生成AI总结或策略信号。")
 
             # --- Final Display after stream is complete ---
+            
+            # Display Data Table in expander after stream is complete
+            df_analyzed = last_known_state.get("analyzed_data")
+            if isinstance(df_analyzed, pd.DataFrame) and not df_analyzed.empty:
+                with data_details_expander:
+                    st.subheader("带指标的详细数据：")
+                    display_df = df_analyzed.copy()
+                    display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
+                    # Define columns to apply specific formatting
+                    cols_2_decimal_no_round = [
+                        '开盘', '收盘', '最高', '最低', '振幅', 'RSI', 'MACD',
+                        'Signal', 'Hist', 'MA20', 'K', 'D', 'OBV', '布林上轨', '布林中轨', '布林下轨'
+                    ]
+                    cols_percentage = ['涨跌幅', '换手率']
+                    cols_amount = ['成交额']
+                    cols_date = ['日期']
+
+                    # Create a dictionary of formatters
+                    formatters = {}
+                    for col in cols_2_decimal_no_round:
+                        if col in display_df.columns:
+                            formatters[col] = format_two_decimals_no_round
+                    for col in cols_percentage:
+                        if col in display_df.columns:
+                            formatters[col] = format_percentage_no_round
+                    for col in cols_amount:
+                        if col in display_df.columns:
+                            formatters[col] = format_amount
+                    for col in cols_date:
+                        if col in display_df.columns:
+                            formatters[col] = format_date_only
+
+                    styled_df = display_df.style.format(formatters)
+
+                    if '策略信号' in display_df.columns:
+                        st.dataframe(styled_df.apply(highlight_signals, subset=['策略信号']))
+                    else:
+                        st.dataframe(styled_df)
+
+            # 1. Display Final Report
             final_report_container.markdown("### 📈 最终投研报告")
             if last_known_state and not last_known_state.get("error"):
                 final_decision_text = last_known_state.get("final_decision", "未能生成报告。")
@@ -129,13 +221,15 @@ def main():
                     mime='text/markdown',
                 )
                 
+                # 2. Display Chart (Data table is now in expander)
                 df_analyzed = last_known_state.get("analyzed_data")
                 if isinstance(df_analyzed, pd.DataFrame) and not df_analyzed.empty:
-                    st.markdown("---")
-                    st.subheader("📊 交互式K线图")
+                    chart_container.markdown("---")
+                    chart_container.subheader("📊 交互式K线图")
                     fig = create_candlestick_chart(df_analyzed)
-                    st.plotly_chart(fig, use_container_width=True)
+                    chart_container.plotly_chart(fig, use_container_width=True)
             else:
+                # Handle errors
                 if last_known_state:
                     error_message = last_known_state.get("error", "发生未知错误。")
                 else:
