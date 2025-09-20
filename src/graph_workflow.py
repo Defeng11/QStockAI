@@ -26,6 +26,7 @@ class AgentState(TypedDict):
     raw_data: pd.DataFrame
     analyzed_data: pd.DataFrame # This will now include signals
     technical_summary: str
+    strategy_summary: str # Added for displaying strategy signals in expander
     final_decision: str
     error: str
 
@@ -113,7 +114,7 @@ def generate_report_node(state: AgentState) -> AgentState:
         
         # For simplicity, we are not generating a separate technical_summary anymore.
         # The final report is the main AI output.
-        return { "final_decision": decision }
+        return { "final_decision": decision, "strategy_summary": signal_summary }
     except Exception as e:
         return { "error": f"生成报告时出错: {e}" }
 

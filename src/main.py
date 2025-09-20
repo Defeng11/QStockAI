@@ -89,8 +89,7 @@ def main():
         
         # Placeholders for the final results
         final_report_container = st.container()
-        data_container = st.container()
-        chart_container = st.container()
+        chart_container = st.container() # Chart will still be displayed at the end
 
         # --- Column Name Translation Map ---
         COLUMN_MAP = {
@@ -101,14 +100,40 @@ def main():
             'obv': 'OBV', 'bbands_upper': '布林上轨', 'bbands_middle': '布林中轨', 'bbands_lower': '布林下轨',
             'signal': '策略信号'
         }
+        
+        # Define highlight function for dataframe
+        def highlight_signals(s):
+            return ['background-color: #90EE90' if v == 1 else '' for v in s]
 
         last_known_state = {}
+        st.markdown("### 分析流程")
+        data_details_expander = st.expander("详细数据", expanded=True)
+        ai_summary_expander = st.expander("AI技术面总结", expanded=True)
+
         try:
             with st.spinner("AI Agent 正在工作中，请稍候..."):
-                # The stream now primarily runs the workflow and collects the final state
                 for event in app.stream(initial_state):
                     for key, value in event.items():
-                        last_known_state.update(value)
+                        last_known_state.update(value) # Continuously update state
+                        
+                        # Update Data Details Expander
+                        if "analyzed_data" in value and isinstance(value["analyzed_data"], pd.DataFrame) and not value["analyzed_data"].empty:
+                            with data_details_expander:
+                                st.subheader("带指标的详细数据：")
+                                display_df = value["analyzed_data"].copy()
+                                display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
+                                st.dataframe(display_df.style.apply(highlight_signals, subset=['策略信号']))
+                        
+                        # Update AI Summary Expander (now includes strategy summary)
+                        if "technical_summary" in value or "strategy_summary" in value:
+                            with ai_summary_expander:
+                                st.subheader("AI技术面总结与策略信号：")
+                                if "technical_summary" in value:
+                                    st.markdown(value["technical_summary"])
+                                if "strategy_summary" in value: # This will be populated from graph_workflow
+                                    st.markdown(value["strategy_summary"])
+                                if "technical_summary" not in value and "strategy_summary" not in value:
+                                    st.info("未能生成AI总结或策略信号。")
 
             # --- Final Display after stream is complete ---
             
@@ -124,19 +149,9 @@ def main():
                     mime='text/markdown',
                 )
                 
-                # 2. Display Data Table with Signals
+                # 2. Display Chart (Data table is now in expander)
                 df_analyzed = last_known_state.get("analyzed_data")
                 if isinstance(df_analyzed, pd.DataFrame) and not df_analyzed.empty:
-                    data_container.markdown("---")
-                    data_container.subheader("策略信号详细数据")
-                    display_df = df_analyzed.copy()
-                    display_df.rename(columns={k: v for k, v in COLUMN_MAP.items() if k in display_df.columns}, inplace=True)
-                    # Highlight buy signals
-                    def highlight_signals(s):
-                        return ['background-color: #90EE90' if v == 1 else '' for v in s]
-                    data_container.dataframe(display_df.style.apply(highlight_signals, subset=['策略信号']))
-
-                    # 3. Display Chart
                     chart_container.markdown("---")
                     chart_container.subheader("📊 交互式K线图")
                     fig = create_candlestick_chart(df_analyzed)
