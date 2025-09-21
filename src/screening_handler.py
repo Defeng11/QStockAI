@@ -50,10 +50,10 @@ def get_stock_universe() -> List[Dict]: # Return list of dicts now
         # --- Primary Attempt: Get industry list from Shenwan and then constituents ---
         try:
             print(f"AkShare 版本: {ak.__version__}")
-            sw_index_df = ak.sw_index_cons(symbol="801003") # 801003 is the code for SW A-share index
+            sw_index_df = ak.sw_index_third_cons()
             
             if sw_index_df.empty:
-                print("警告: AkShare sw_index_cons() 返回空DataFrame。")
+                print("警告: AkShare sw_index_third_cons() 返回空DataFrame。")
                 raise ValueError("Empty Shenwan index constituent data")
 
             # Rename columns to a standard format
@@ -63,7 +63,7 @@ def get_stock_universe() -> List[Dict]: # Return list of dicts now
                 stock_data = sw_index_df[['代码', '名称', '所属行业']].to_dict(orient='records')
                 print(f"已从AkShare (申万行业) 获取 {len(stock_data)} 只股票代码并更新缓存。")
             else:
-                print("警告: AkShare sw_index_cons() 缺少预期列。")
+                print("警告: AkShare sw_index_third_cons() 缺少预期列。")
                 raise ValueError("Missing expected columns in Shenwan index constituent data")
             
         except Exception as e:
@@ -91,7 +91,8 @@ def get_stock_universe() -> List[Dict]: # Return list of dicts now
                 stock_data = [] # Ensure empty if fallback also fails
 
         if not stock_data:
-            print("未能从AkShare获取到任何股票数据。将返回空列表。")
+            print("未能从AkShare获取到任何股票数据。将返回空列表。
+")
             return []
 
         # Save to cache
