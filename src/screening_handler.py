@@ -47,46 +47,96 @@ def get_stock_universe() -> List[Dict]: # Return list of dicts now
     print("从数据源获取股票池 (代码、名称、行业) 并更新缓存...")
     try:
         stock_data = []
-        # Get industry list from Tonghuashun
-        industry_df = ak.stock_board_industry_summary_ths()
-        
-        if industry_df.empty or '行业名称' not in industry_df.columns:
-            print("警告: 未能获取到行业列表或行业名称列缺失。")
-            return []
+        # --- Primary Attempt: Get industry list from Tonghuashun and then constituents ---
+        try:
+            industry_df = ak.stock_board_industry_summary_ths()
+            
+            # Normalize column names for industry_df
+            # Assuming the second column is '行业名称' based on previous observation
+            if industry_df.empty:
+                print("警告: AkShare stock_board_industry_summary_ths() 返回空DataFrame。")
+                raise ValueError("Empty industry summary data")
+            
+            # Attempt to get '行业名称' column, try by index if name is garbled
+            if '行业名称' in industry_df.columns:
+                pass # Column name is correct
+            elif len(industry_df.columns) > 1: # Assume second column is industry name
+                industry_df.rename(columns={industry_df.columns[1]: '行业名称'}, inplace=True)
+            else:
+                print("警告: AkShare stock_board_industry_summary_ths() 无法识别行业名称列。")
+                raise ValueError("Industry name column not found or recognized")
 
-        total_industries = len(industry_df)
-        for i, row in industry_df.iterrows():
-            industry_name = row['行业名称']
-            print(f"  正在获取行业 '{industry_name}' 下的股票 ({i+1}/{total_industries})...")
-            try:
-                # Get constituent stocks for each industry
-                cons_df = ak.stock_board_industry_cons_ths(symbol=industry_name)
-                if not cons_df.empty and '代码' in cons_df.columns and '名称' in cons_df.columns:
-                    for _, stock_row in cons_df.iterrows():
-                        stock_data.append({
-                            '代码': stock_row['代码'],
-                            '名称': stock_row['名称'],
-                            '所属行业': industry_name
-                        })
-                else:
-                    print(f"    警告: 行业 '{industry_name}' 下未能获取到股票数据或缺少预期列。")
-            except Exception as e:
-                print(f"    获取行业 '{industry_name}' 股票时发生错误: {e}")
-            time.sleep(1) # Polite delay between industry calls
+            total_industries = len(industry_df)
+            for i, row in industry_df.iterrows():
+                industry_name = row['行业名称']
+                print(f"  正在获取行业 '{industry_name}' 下的股票 ({i+1}/{total_industries})...")
+                try:
+                    cons_df = ak.stock_board_industry_cons_ths(symbol=industry_name)
+                    # Normalize column names for cons_df
+                    if not cons_df.empty:
+                        if '代码' not in cons_df.columns and '股票代码' in cons_df.columns:
+                            cons_df.rename(columns={'股票代码': '代码'}, inplace=True)
+                        if '名称' not in cons_df.columns and '股票名称' in cons_df.columns:
+                            cons_df.rename(columns={'股票名称': '名称'}, inplace=True)
 
-        # Convert to DataFrame to remove duplicates and then back to list of dicts
-        if stock_data:
+                    if not cons_df.empty and '代码' in cons_df.columns and '名称' in cons_df.columns:
+                        for _, stock_row in cons_df.iterrows():
+                            stock_data.append({
+                                '代码': stock_row['代码'],
+                                '名称': stock_row['名称'],
+                                '所属行业': industry_name
+                            })
+                    else:
+                        print(f"    警告: 行业 '{industry_name}' 下未能获取到股票数据或缺少预期列。")
+                except Exception as e:
+                    print(f"    获取行业 '{industry_name}' 股票时发生错误: {e}")
+                time.sleep(1) # Polite delay between industry calls
+
+            if not stock_data: # If no data collected from THS industries
+                raise ValueError("No stock data collected from THS industries")
+
             stock_df_final = pd.DataFrame(stock_data).drop_duplicates(subset=['代码'])
             stock_data = stock_df_final.to_dict(orient='records')
-        else:
-            print("未能从AkShare获取到任何股票数据。")
+            print(f"已从AkShare (THS行业) 获取 {len(stock_data)} 只股票代码并更新缓存。")
+            
+        except Exception as e:
+            print(f"从AkShare (THS行业) 获取股票池时发生错误: {e}。将尝试备用接口。")
+            stock_data = [] # Clear any partial data
+
+            # --- Fallback Attempt: Get all A-share codes and names, set industry to '未知' ---
+            try:
+                stock_info_df = ak.stock_info_a_code_name()
+                if not stock_info_df.empty:
+                    # Normalize column names for stock_info_df
+                    if 'code' in stock_info_df.columns:
+                        stock_info_df.rename(columns={'code': '代码'}, inplace=True)
+                    if 'name' in stock_info_df.columns:
+                        stock_info_df.rename(columns={'name': '名称'}, inplace=True)
+
+                    if '代码' in stock_info_df.columns and '名称' in stock_info_df.columns:
+                        for _, row in stock_info_df.iterrows():
+                            stock_data.append({
+                                '代码': row['代码'],
+                                '名称': row['名称'],
+                                '所属行业': '未知' # Set industry to unknown
+                            })
+                        print(f"已从AkShare (备用接口) 获取 {len(stock_data)} 只股票代码并更新缓存。")
+                    else:
+                        print("警告: AkShare stock_info_a_code_name() 缺少预期列。")
+                else:
+                    print("警告: AkShare stock_info_a_code_name() 返回空DataFrame。")
+            except Exception as e_fallback:
+                print(f"从AkShare (备用接口) 获取股票池时发生错误: {e_fallback}。")
+                stock_data = [] # Ensure empty if fallback also fails
+
+        if not stock_data:
+            print("未能从AkShare获取到任何股票数据。将返回空列表。")
             return []
 
         # Save to cache
         with open(UNIVERSE_CACHE_FILE, "w", encoding="utf-8") as f:
             json.dump(stock_data, f, ensure_ascii=False, indent=4)
         
-        print(f"已从数据源获取 {len(stock_data)} 只股票代码并更新缓存。")
         return stock_data
     except Exception as e:
         print(f"获取股票池时发生错误: {e}。将返回空列表。")
