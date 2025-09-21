@@ -25,13 +25,13 @@ def init_llm(model_name: str = "qwen-max"):
     print(f"正在初始化LLM: {model_name}")
 
     if model_name in ["qwen-max", "qwen-turbo", "qwen-plus"]:
-        if not config.DASHSCOPE_API_KEY:
+        if not src.config.DASHSCOPE_API_KEY:
             print(f"错误: DASHSCOPE_API_KEY 未设置。请在 .env 文件中提供。")
             return None
         try:
             llm = ChatTongyi(
                 model_name=model_name,
-                dashscope_api_key=config.DASHSCOPE_API_KEY
+                dashscope_api_key=src.config.DASHSCOPE_API_KEY
             )
             print(f"成功初始化 {model_name} 模型。")
             return llm
