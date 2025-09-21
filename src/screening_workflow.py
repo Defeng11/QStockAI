@@ -156,7 +156,7 @@ if __name__ == '__main__':
         print("\n-- 选股工作流测试结束，最终状态: --")
         print(final_screening_state.get("found_signals", "未找到信号"))
         if final_screening_state.get("error"):
-            print(f"错误: {final_screening_state.get("error")}")
+            print(f"错误: {final_screening_state.get('error')}")
 
     except Exception as e:
         print(f"执行选股工作流时发生严重错误: {e}")
