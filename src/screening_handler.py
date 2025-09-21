@@ -7,26 +7,58 @@ batch data retrieval, and batch strategy application.
 
 import pandas as pd
 import time
+import os
+import json
+from datetime import datetime, timedelta
 from typing import List, Dict
 
 # Import necessary modules from src
 from src.data_handler import get_stock_daily
 from src.strategy_handler import apply_five_step_integrated_strategy
+import akshare as ak
 
+# Define cache directory and file
+CACHE_DIR = "cache"
+UNIVERSE_CACHE_FILE = os.path.join(CACHE_DIR, "stock_universe_cache.json")
+CACHE_EXPIRATION_HOURS = 24 # Cache expires after 24 hours
 
 def get_stock_universe() -> List[str]:
     """
-    Fetches a list of all A-share stock codes.
-    Currently uses a placeholder list. In a real scenario, this would fetch from a data source.
+    Fetches a list of all A-share stock codes with caching.
     """
     print("正在获取股票池...")
-    # Placeholder for actual stock universe retrieval (e.g., from AkShare, Baostock)
-    # For testing, return a small, fixed list.
-    # In a real scenario, this would involve a call like akshare.stock_zh_a_spot_em()
-    # or baostock.query_all_stock().
-    stock_list = ["000001", "600000", "000002", "600036"] # Example stocks
-    print(f"已获取 {len(stock_list)} 只股票代码。")
-    return stock_list
+    
+    # Ensure cache directory exists
+    os.makedirs(CACHE_DIR, exist_ok=True)
+
+    # Check if cache file exists and is fresh
+    if os.path.exists(UNIVERSE_CACHE_FILE):
+        last_modified_timestamp = os.path.getmtime(UNIVERSE_CACHE_FILE)
+        last_modified_datetime = datetime.fromtimestamp(last_modified_timestamp)
+        
+        if datetime.now() - last_modified_datetime < timedelta(hours=CACHE_EXPIRATION_HOURS):
+            print("从缓存加载股票池...")
+            with open(UNIVERSE_CACHE_FILE, "r", encoding="utf-8") as f:
+                stock_list = json.load(f)
+            print(f"已从缓存获取 {len(stock_list)} 只股票代码。")
+            return stock_list
+
+    print("从数据源获取股票池并更新缓存...")
+    try:
+        # Use AkShare to get all A-share stock codes
+        # ak.stock_zh_a_spot_em() returns a DataFrame, we need the '代码' column
+        stock_df = ak.stock_zh_a_spot_em()
+        stock_list = stock_df["代码"].tolist()
+        
+        # Save to cache
+        with open(UNIVERSE_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(stock_list, f, ensure_ascii=False, indent=4)
+        
+        print(f"已从数据源获取 {len(stock_list)} 只股票代码并更新缓存。")
+        return stock_list
+    except Exception as e:
+        print(f"获取股票池时发生错误: {e}。将返回空列表。")
+        return []
 
 
 def batch_get_stock_daily(stock_list: List[str], start_date: str, end_date: str, max_retries: int = 3, initial_delay: int = 2) -> Dict[str, pd.DataFrame]:
