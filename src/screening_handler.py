@@ -162,17 +162,19 @@ def batch_apply_strategy(data_dict: Dict[str, pd.DataFrame]) -> Dict[str, pd.Dat
     return processed_data
 
 
-def filter_signals(data_dict: Dict[str, pd.DataFrame], signal_type: str = 'buy', recent_days: int = 5) -> List[Dict]:
+def filter_signals(data_dict: Dict[str, pd.DataFrame], stock_names_map: Dict[str, str], stock_industry_map: Dict[str, str], signal_type: str = 'buy', recent_days: int = 5) -> List[Dict]:
     """
-    Filters stocks based on generated signals within recent days.
+    Filters stocks based on generated signals within recent days, including stock name and industry.
 
     Args:
         data_dict (Dict[str, pd.DataFrame]): Dictionary of stock codes to their DataFrames with signals.
+        stock_names_map (Dict[str, str]): Map from stock code to stock name.
+        stock_industry_map (Dict[str, str]): Map from stock code to stock industry.
         signal_type (str): Type of signal to filter ('buy' or 'sell').
         recent_days (int): Look back for signals within this many recent days.
 
     Returns:
-        List[Dict]: A list of dictionaries, each containing 'stock_code', 'signal_date', 'signal_type'.
+        List[Dict]: A list of dictionaries, each containing 'stock_code', 'stock_name', 'industry', 'signal_date', 'signal_type'.
     """
     print(f"正在筛选最近 {recent_days} 天内的 {signal_type} 信号...")
     found_signals = []
@@ -193,6 +195,8 @@ def filter_signals(data_dict: Dict[str, pd.DataFrame], signal_type: str = 'buy',
                 for _, row in signals_in_recent_days.iterrows():
                     found_signals.append({
                         'stock_code': stock_code,
+                        'stock_name': stock_names_map.get(stock_code, '未知名称'),
+                        'industry': stock_industry_map.get(stock_code, '未知行业'),
                         'signal_date': row['date'].strftime('%Y-%m-%d'),
                         'signal_type': signal_type
                     })

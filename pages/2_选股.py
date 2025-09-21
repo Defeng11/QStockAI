@@ -10,6 +10,7 @@ import pandas as pd
 
 # Import the screening workflow app
 from src.screening_workflow import screening_app
+from src.screening_handler import get_stock_universe
 
 def main():
     st.set_page_config(page_title="策略选股", layout="wide")
@@ -32,6 +33,14 @@ def main():
         # Recent days for signal filtering
         recent_days = st.slider("信号回溯天数 (最近几天内)", min_value=1, max_value=30, value=5)
 
+        st.markdown("---")
+        st.header("行业/板块筛选")
+        # Get stock universe to extract industries for filtering
+        # This will use the cached data from screening_handler
+        universe_data = get_stock_universe()
+        all_industries = sorted(list(set([item.get('所属行业', '未知') for item in universe_data])))
+        selected_industries = st.multiselect("选择行业/板块", options=all_industries, default=all_industries)
+
         start_screening_button = st.button("开始选股", type="primary", use_container_width=True)
         st.markdown("---")
         st.header("免责声明")
@@ -42,7 +51,8 @@ def main():
             "start_date": start_date.strftime("%Y%m%d"),
             "end_date": end_date.strftime("%Y%m%d"),
             "signal_type": signal_type,
-            "recent_days": recent_days
+            "recent_days": recent_days,
+            "selected_industries": selected_industries # Pass selected industries to workflow
         }
         
         st.markdown("### 筛选过程与结果")
@@ -86,6 +96,9 @@ def main():
                     status_text.success(f"选股完成！成功找到 {len(found_signals)} 个符合条件的股票！")
                     # Convert list of dicts to DataFrame for display
                     signals_df = pd.DataFrame(found_signals)
+                    # Reorder columns for better display
+                    display_cols = ['stock_code', 'stock_name', 'industry', 'signal_date', 'signal_type']
+                    signals_df = signals_df[display_cols]
                     st.dataframe(signals_df, use_container_width=True)
                 else:
                     status_text.info("选股完成！未找到符合当前筛选条件的股票。")

@@ -87,9 +87,11 @@ def filter_results_node(state: ScreeningState) -> ScreeningState:
     print("-- 选股工作流: 4. 筛选结果 --")
     try:
         processed_stock_data = state.get("processed_stock_data")
+        stock_names_map = state.get("stock_names_map")
+        stock_industry_map = state.get("stock_industry_map")
         signal_type = state.get("signal_type", 'buy')
         recent_days = state.get("recent_days", 5)
-        found_signals = filter_signals(processed_stock_data, signal_type, recent_days)
+        found_signals = filter_signals(processed_stock_data, stock_names_map, stock_industry_map, signal_type, recent_days)
         return { "found_signals": found_signals }
     except Exception as e:
         return { "error": f"筛选结果时出错: {e}" }
