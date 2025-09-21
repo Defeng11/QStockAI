@@ -86,10 +86,15 @@ def batch_get_stock_daily(stock_list: List[str], start_date: str, end_date: str,
     Returns:
         Dict[str, pd.DataFrame]: A dictionary where keys are stock codes and values are their DataFrames.
     """
-    print(f"正在批量获取 {len(stock_list)} 只股票的历史数据...")
+    total_stocks = len(stock_list)
+    print(f"正在批量获取 {total_stocks} 只股票的历史数据...")
     all_stock_data = {}
     for i, stock_code in enumerate(stock_list):
-        print(f"  获取 {stock_code} 数据 ({i+1}/{len(stock_list)})... ")
+        # Calculate progress percentage
+        progress_percent = int(((i + 1) / total_stocks) * 100)
+        print(f"PROGRESS_BATCH_GET_DATA:{progress_percent}") # Progress indicator for workflow
+        
+        print(f"  获取 {stock_code} 数据 ({i+1}/{total_stocks})... ")
         retries = 0
         current_delay = initial_delay
         while retries <= max_retries:
@@ -136,11 +141,16 @@ def batch_apply_strategy(data_dict: Dict[str, pd.DataFrame]) -> Dict[str, pd.Dat
     Returns:
         Dict[str, pd.DataFrame]: Dictionary with strategy applied and 'signal' column added.
     """
+    total_stocks = len(data_dict)
     print("正在批量应用策略...")
     processed_data = {}
-    for stock_code, df in data_dict.items():
+    for i, (stock_code, df) in enumerate(data_dict.items()):
+        # Calculate progress percentage
+        progress_percent = int(((i + 1) / total_stocks) * 100)
+        print(f"PROGRESS_BATCH_APPLY_STRATEGY:{progress_percent}") # Progress indicator for workflow
+
         if not df.empty:
-            print(f"  对 {stock_code} 应用策略...")
+            print(f"  对 {stock_code} 应用策略 ({i+1}/{total_stocks})... ")
             try:
                 df_with_signals = apply_five_step_integrated_strategy(df)
                 processed_data[stock_code] = df_with_signals

@@ -66,7 +66,7 @@ def batch_get_data_node(state: ScreeningState) -> ScreeningState:
         all_data = batch_get_stock_daily(stock_codes, start_date, end_date)
         if not all_data:
             return { "error": "未能批量获取股票数据。" }
-        return { "all_stock_data": all_data }
+        return { "all_stock_data": all_data, "progress_batch_get_data": 100 }
     except Exception as e:
         return { "error": f"批量获取数据时出错: {e}" }
 
@@ -78,7 +78,7 @@ def batch_apply_strategy_node(state: ScreeningState) -> ScreeningState:
         processed_data = batch_apply_strategy(all_stock_data)
         if not processed_data:
             return { "error": "未能批量应用策略。" }
-        return { "processed_stock_data": processed_data }
+        return { "processed_stock_data": processed_data, "progress_batch_apply_strategy": 100 }
     except Exception as e:
         return { "error": f"批量应用策略时出错: {e}" }
 

@@ -45,9 +45,12 @@ def main():
             "recent_days": recent_days
         }
         
-        st.markdown("### 筛选结果")
-        results_container = st.empty() # Placeholder for results or error messages
-
+        st.markdown("### 筛选过程与结果")
+        
+        # Progress indicators
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
         final_screening_state = {}
         try:
             with st.spinner("AI Agent 正在批量选股中，请稍候..."):
@@ -59,23 +62,36 @@ def main():
                 for event in stream_result:
                     for key, value in event.items():
                         final_screening_state.update(value)
-                        # Optional: display intermediate progress if needed
-                        # if key == "batch_get_data":
-                        #     results_container.info(f"已获取 {len(value.get('all_stock_data', {}))} 只股票数据...")
+                        
+                        # Update progress bar and status text
+                        if "progress_batch_get_data" in value:
+                            progress = value["progress_batch_get_data"]
+                            status_text.info(f"正在获取股票数据... {progress}%")
+                            progress_bar.progress(progress // 2) # Half of total progress for data fetching
+                        elif "progress_batch_apply_strategy" in value:
+                            progress = value["progress_batch_apply_strategy"]
+                            status_text.info(f"正在应用策略... {progress}%")
+                            progress_bar.progress(50 + progress // 2) # Second half for strategy application
+                        elif key == "get_universe":
+                            status_text.info("正在获取股票池...")
+                            progress_bar.progress(0)
+                        elif key == "filter_results":
+                            status_text.info("正在筛选结果...")
+                            progress_bar.progress(100) # Full progress when filtering starts
 
             # --- Final Display after stream is complete ---
             if final_screening_state and not final_screening_state.get("error"):
                 found_signals = final_screening_state.get("found_signals", [])
                 if found_signals:
-                    st.success(f"成功找到 {len(found_signals)} 个符合条件的股票！")
+                    status_text.success(f"选股完成！成功找到 {len(found_signals)} 个符合条件的股票！")
                     # Convert list of dicts to DataFrame for display
                     signals_df = pd.DataFrame(found_signals)
                     st.dataframe(signals_df, use_container_width=True)
                 else:
-                    st.info("未找到符合当前筛选条件的股票。")
+                    status_text.info("选股完成！未找到符合当前筛选条件的股票。")
             else:
                 error_message = final_screening_state.get("error", "发生未知错误。")
-                st.error(f"选股过程中出现错误: {error_message}")
+                status_text.error(f"选股过程中出现错误: {error_message}")
 
         except Exception as e:
             st.error(f"执行选股工作流时发生严重错误: {e}")
