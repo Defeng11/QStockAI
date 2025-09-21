@@ -46,20 +46,41 @@ def get_stock_universe() -> List[Dict]: # Return list of dicts now
 
     print("从数据源获取股票池 (代码、名称、行业) 并更新缓存...")
     try:
-        # Use AkShare to get all A-share stock codes, names, and industry
-        # ak.stock_board_industry_spot_em() provides '代码', '名称', '所属行业'
-        stock_df = ak.stock_board_industry_spot_em()
+        stock_data = []
+        # Get industry list from Tonghuashun
+        industry_df = ak.stock_board_industry_summary_ths()
         
-        # Select relevant columns and convert to list of dictionaries
-        # Ensure column names match what we expect: '代码', '名称', '所属行业'
-        if '代码' in stock_df.columns and '名称' in stock_df.columns and '所属行业' in stock_df.columns:
-            stock_data = stock_df[['代码', '名称', '所属行业']].to_dict(orient='records')
+        if industry_df.empty or '行业名称' not in industry_df.columns:
+            print("警告: 未能获取到行业列表或行业名称列缺失。")
+            return []
+
+        total_industries = len(industry_df)
+        for i, row in industry_df.iterrows():
+            industry_name = row['行业名称']
+            print(f"  正在获取行业 '{industry_name}' 下的股票 ({i+1}/{total_industries})...")
+            try:
+                # Get constituent stocks for each industry
+                cons_df = ak.stock_board_industry_cons_ths(symbol=industry_name)
+                if not cons_df.empty and '代码' in cons_df.columns and '名称' in cons_df.columns:
+                    for _, stock_row in cons_df.iterrows():
+                        stock_data.append({
+                            '代码': stock_row['代码'],
+                            '名称': stock_row['名称'],
+                            '所属行业': industry_name
+                        })
+                else:
+                    print(f"    警告: 行业 '{industry_name}' 下未能获取到股票数据或缺少预期列。")
+            except Exception as e:
+                print(f"    获取行业 '{industry_name}' 股票时发生错误: {e}")
+            time.sleep(1) # Polite delay between industry calls
+
+        # Convert to DataFrame to remove duplicates and then back to list of dicts
+        if stock_data:
+            stock_df_final = pd.DataFrame(stock_data).drop_duplicates(subset=['代码'])
+            stock_data = stock_df_final.to_dict(orient='records')
         else:
-            print("警告: AkShare返回的股票行业数据缺少预期列。")
-            # Fallback to just code if columns are missing
-            stock_data = stock_df[['代码', '名称']].to_dict(orient='records') # Or handle as error
-            for item in stock_data:
-                item['所属行业'] = '未知' # Add placeholder for missing industry
+            print("未能从AkShare获取到任何股票数据。")
+            return []
 
         # Save to cache
         with open(UNIVERSE_CACHE_FILE, "w", encoding="utf-8") as f:
