@@ -1,62 +1,115 @@
-项目名称：量子选股 (LiangZiXuanGu) AI Agent
+### **本次会话总结与项目状态更新 (修订版)**
 
-项目状态更新报告。请仔细阅读并记住以下信息，以便我们可以在未来的会话中继续这个项目。
+**I. 本次会话已完成功能 (Implemented Features in this Session):**
 
-1.  **已完成部分**
-    * **项目初始化与环境设置:**
-        * 初始化了本地Git仓库，用于完整的版本控制。
-        * 创建了标准的项目目录结构 (`src`, `tests`, `logs`)。
-        * 创建了Python虚拟环境 (`venv`)，实现了项目依赖与全局环境的隔离，并解决了C盘空间问题。
-        * 明确并记录了标准的Git功能分支开发工作流。
-        * **成功重建了虚拟环境并重新安装了所有依赖库。**
+1.  **UI/UX 增强与多页面应用**：
+    *   **混合布局**：在“诊股”页面恢复动态展开器（“详细数据”和“AI技术面总结”），并解决数据表重复显示问题，实现分析过程中的分步显示。
+    *   **数据表格精细化格式**：实现数据表格中数值（开盘、收盘等）、日期、百分比（涨跌幅、换手率）和成交额的精细化格式化，确保显示清晰、准确（例如，两位小数不四舍五入，成交额带单位）。
+    *   **多页面应用框架**：成功搭建Streamlit多页面应用框架，将原有的单股分析功能迁移至独立页面（`pages/1_诊股.py`），并为未来的策略选股功能创建了独立页面（`pages/2_选股.py`）。优化了 `app.py` 作为主入口页面的显示，使其更简洁。
+    *   **选股页面UI基础**：在“选股”页面（`pages/2_选股.py`）实现了基本的UI界面，包括日期范围、信号类型、信号回溯天数等输入控件，以及进度条和状态信息显示。
+2.  **后端核心逻辑 - 股票筛选基础**：
+    *   **股票池获取增强**：实现了从 `AkShare` 获取股票代码、名称和行业数据的功能，并加入了文件缓存机制和备用接口（`ak.stock_info_a_code_name()`）以提高鲁棒性。
+    *   **批量数据获取鲁棒性**：在批量获取股票历史数据时，实现了指数退避重试机制，以应对API频率限制和网络波动。
+    *   **批量策略应用框架**：创建了 `src/screening_handler.py` 模块，包含了批量应用策略的基础函数。
+    *   **信号筛选框架**：创建了 `src/screening_handler.py` 中的 `filter_signals` 函数，能够根据信号类型和回溯天数筛选股票，并返回包含股票名称和行业信息的结果。
+    *   **本地数据集成**：实现了 `get_stock_daily` 函数优先从本地通达信日线数据读取，并支持AkShare回退。
+    *   **LangGraph选股工作流**：创建了 `src/screening_workflow.py` 作为新的LangGraph选股工作流，编排了股票池获取、批量数据获取、批量策略应用和信号筛选的流程。
+3.  **AI报告优化**：
+    *   更新了AI报告生成提示词（在 `src/graph_workflow.py` 中），使其更详细、结构化，并要求AI结合量化信号、宏观环境、行业趋势和公司基本面进行深度分析。
 
-    * **核心模块开发:**
-        * **数据处理模块 (`data_handler.py`):** 实现了从 `akshare` 库获取指定股票代码日线历史数据的功能。
-        * **技术分析模块 (`analysis_handler.py`):**
-            * 解决了 `TA-Lib` 库在Windows上的安装难题，通过手动安装 `.whl` 文件的方式成功集成，并**已确认安装成功**。
-            * 构建了灵活的、可扩展的指标计算框架，允许未来方便地增加新指标。
-            * 已实现 `RSI` 和 `MACD` 指标的计算。
-            * **新增了MA、KD、OBV、布林带等多种技术指标。**
-        * **AI核心模块 (`llm_switcher.py`):**
-            * 实现了可切换的LLM模型加载器，当前支持阿里千问（Qwen）系列模型。
-            * 通过 `.env` 文件和 `config.py` 建立了安全、标准的API Key管理机制。
-        * **核心工作流 (大脑) (`graph_workflow.py`):**
-            * 使用 `LangGraph` 构建了完整的、模仿人类专家分析流程的多节点工作流（获取数据 -> 技术分析 -> 最终决策）。
-            * 在工作流中实现了两阶段的AI“角色扮演”分析，分别由“技术分析师”和“投资总监”完成，确保了分析的深度和逻辑性。
-            * 构建了基于状态的错误处理机制。
+**II. 前后端代码主要更新 (Key Frontend & Backend Code Updates):**
 
-    * **用户界面与体验 (`main.py` & `start.bat`):**
-        * 使用 Streamlit 构建了功能完整、交互友好的Web用户界面。
-        * **实现了“过程透明化”**：UI会分步展示数据获取、指标计算、AI技术摘要等中间结果，解决了您之前的疑虑。
-        * **实现了高级UI功能**：加入了使用 `Plotly` 绘制的专业、可交互的K线图（包含移动平均线和MACD子图），并添加了“下载投研报告”按钮。
-        * 解决了由 `streamlit` 运行机制导致的 `ModuleNotFoundError` 路径问题，以及 `AttributeError` 状态处理的Bug，增强了程序的稳定性。
-        * 创建了 `start.bat` 一键启动器，简化了Windows用户的操作。
-        * **实现了UI界面上的日期选择功能，使数据获取时间范围灵活可控。**
-        * **实现了UI界面上技术指标的动态选择功能。**
-        * **优化了UI数据展示，将数据表格与AI总结分离，并实现了表头中文化。**
-        * **改进了UI布局和数据展示**：
-            * 实现了混合布局，恢复了动态展开器（“详细数据”和“AI技术面总结”），并在分析过程中分步显示。
-            * 解决了“详细数据”展开器中数据表重复显示的问题，确保只显示一份最终的、最完整的数据表。
-            * 实现了数据表格的精细化格式，包括：
-                * 日期列只显示日期。
-                * 涨跌幅、换手率列添加 % 单位。
-                * 数值列（开盘、收盘等）保留两位小数且不四舍五入。
-                * 成交额列转换为带单位（亿/万）并最多保留四位小数。
-        * **搭建了多页面应用框架**：
-            * 将单股分析功能迁移至独立页面（`1_诊股.py`）。
-            * 为未来的策略选股功能创建了独立页面（`2_选股.py`）。
-            * 调整了启动脚本以支持多页面应用。
+1.  **前端代码 (`pages/` 目录)**：
+    *   `pages/1_诊股.py`：
+        *   **修改**：恢复并优化了动态展开器显示逻辑，修复了数据表重复显示问题，实现了数据表格精细化格式，并修正了模块导入路径（`from src.module import ...`）。
+    *   `pages/2_选股.py`：
+        *   **新增**：实现了选股页面的UI（输入控件、进度条、结果显示），并集成了 `screening_app` 工作流。
+    *   `app.py`：
+        *   **修改**：简化了主入口页面显示。
+2.  **后端代码 (`src/` 目录)**：
+    *   `src/__init__.py`：
+        *   **新增**：创建了空文件，将 `src` 目录标识为Python包。
+    *   `src/screening_handler.py`：
+        *   **新增**：`get_stock_universe()` (增强版，含缓存、名称、行业，并包含AkShare备用方案)。
+        *   **新增**：`batch_get_stock_daily()` (含指数退避重试)。
+        *   **新增**：`batch_apply_strategy()` (含进度报告)。
+        *   **新增**：`filter_signals()` (含名称和行业数据处理)。
+    *   `src/screening_workflow.py`：
+        *   **新增**：`ScreeningState` (更新以包含名称和行业映射)。
+        *   **新增**：`get_universe_node` (处理新数据结构)。
+        *   **新增**：`batch_get_data_node` (传递进度信息)。
+        *   **新增**：`batch_apply_strategy_node` (传递进度信息)。
+        *   **新增**：`filter_results_node` (处理名称和行业数据)。
+        *   **新增**：整个 `screening_app` LangGraph工作流。
+    *   `src/data_handler.py`：
+        *   **修改**：`get_stock_daily()` 函数集成了本地通达信日线数据读取功能，并支持AkShare回退。
+    *   `src/llm_switcher.py`：
+        *   **修改**：修正了 `config` 模块的导入和使用方式。
+    *   `src/graph_workflow.py`：
+        *   **修改**：更新了AI报告生成提示词。
+    *   `src/analysis_handler.py`：
+        *   **修改**：修正了测试块中的模块导入路径。
+    *   `src/strategy_handler.py`：
+        *   **无直接修改**：但其函数被 `screening_handler.py` 调用。
+3.  **启动脚本**：
+    *   `start.bat`：
+        *   **修改**：调整了Streamlit的启动命令，以支持多页面应用。
 
-    * **版本控制与部署**：
-        * 成功将本地功能分支推送到远程GitHub仓库。
-        * 创建并合并了Pull Request到 `main` 分支，确保了代码的集成和版本管理。
-        * 清理了本地已合并的功能分支。
+**III. Git 操作与版本管理 (Git Operations & Version Control):**
 
-2.  **未完成部分**
-    *   **交易策略更新**：需要根据用户提供的策略文件，实现具体的交易策略，并将其融入AI Agent的决策流程，使其能分析出买入/卖出价格、止损止盈等信息。
+*   **分支**：所有修改最终都合并到了 `main` 分支。
+*   **主要提交**：
+    *   `feat(layout): Implement hybrid layout with dynamic expanders and integrated strategy results`
+    *   `fix(display): Add check for '策略信号' column before highlighting in main.py`
+    *   `fix(display): Show single data table in expander after strategy signals are added`
+    *   `feat(display): Implement custom numerical and amount formatting for data table`
+    *   `fix(app): Create app.py as main entry point and update start.bat for multi-page app`
+    *   `fix(imports): Adjust import paths in 1_诊股.py and add __init__.py to src for multi-page app`
+    *   `fix(imports): Adjust internal src module imports to absolute paths`
+    *   `优化: 在 screening_handler.py 中为批量数据获取实现指数退避重试`
+    *   `优化: 在选股页面实现进度条和状态信息显示`
+    *   `功能: 完善筛选结果显示和行业筛选功能`
+    *   `fix(cache): Delete old stock universe cache to force regeneration with new format`
+    *   `fix(universe): Implement robust stock universe fetching with ths and fallback`
+    *   `优化: 更新 GEMINI.md，明确Git工作流和中文要求`
+    *   `feat(llm): Update AI report generation prompt for enhanced structure and detail`
+    *   `feat(data): Integrate local Tongdaxin daily data with AkShare fallback`
 
-3.  **未来的任务**
-    *   **增加测试**：编写 `pytest` 测试用例，对核心模块的功能进行单元测试，确保代码质量和稳定性。
-    *   **扩展指标**：在 `analysis_handler.py` 中增加更多技术指标（如布林带、KDJ等），并在UI上提供多选框，让用户可以自由组合分析。
+**IV. 遇到的问题与经验教训 (Problems Encountered & Lessons Learned):**
 
-好的，以上就是项目的最新状态。现在你可以告诉我你已经理解了，并且准备好在下次继续这个项目。
+1.  **AkShare 数据接口不稳定**：
+    *   **问题**：`ak.stock_board_industry_spot_em()` 和 `ak.stock_board_industry_summary_ths()` 返回数据结构不符预期或乱码，导致无法获取行业数据。`ak.stock_board_industry_cons_ths()` 报错不存在（即使升级AkShare后）。
+    *   **教训**：依赖第三方API时，需充分验证其稳定性，并准备多级备用方案。接口变化频繁是常态。
+    *   **下次避开**：在依赖核心数据接口前，应先进行充分的接口测试和数据结构验证。
+
+2.  **Streamlit 多页面应用迁移复杂性**：
+    *   **问题**：文件移动导致导入路径错误（`ModuleNotFoundError`），`app.py` 作为主入口的UI设计与页面内容混淆，以及侧边栏输入控件的显示问题。
+    *   **教训**：Streamlit多页面应用需要对模块导入和UI结构有清晰的规划。`src` 目录作为包需要 `__init__.py`。主入口 `app.py` 应保持简洁，页面内容放在 `pages/` 目录下。
+    *   **下次避开**：在进行大型文件结构调整前，应更详细地规划导入路径和UI组件的归属，并提前创建 `__init__.py`。
+
+3.  **AI代理与用户沟通障碍**：
+    *   **问题**：长消息在用户端显示不全，导致用户认为AI没有回答或出错。
+    *   **教训**：在检测到沟通障碍时，应立即改变策略，采用更短、更直接的回复方式，并主动寻求用户确认。
+    *   **下次避开**：主动询问用户是否能完整看到消息，并尝试分段发送复杂信息。
+
+4.  **Git权限与自动化**：
+    *   **问题**：AI代理无法自动合并Pull Request，需要用户手动操作，因为权限不足。
+    *   **教训**：自动化操作受限于权限。对于需要高权限的操作，应提前告知用户并提供手动操作指南。
+    *   **下次避开**：在执行Git合并等敏感操作前，明确告知用户可能需要手动介入。
+
+**V. 尚未完成/暂停的任务 (Pending/Paused Tasks):**
+
+1.  **股票行业数据获取**：
+    *   **状态**：暂停。`AkShare` 的行业数据接口（`ak.stock_board_industry_summary_ths()` 和 `ak.stock_board_industry_cons_ths()`）目前无法正常工作。
+    *   **下一步**：等待Grok提供新的 `AkShare` 接口方案，或考虑其他数据源。
+2.  **“选股”到“诊股”的无缝跳转**：
+    *   **状态**：暂停。这是“阶段 3.4”的任务，用户要求暂时等待。
+3.  **性能优化**：
+    *   **状态**：已完成股票池缓存和指数退避重试。
+    *   **下一步**：如果需要，可以考虑更复杂的并行处理（多进程/异步并发获取数据）。
+4.  **测试**：
+    *   **状态**：尚未开始编写 `pytest` 单元测试和集成测试。
+    *   **下一步**：待核心功能稳定后进行。
+5.  **文档更新**：
+    *   **状态**：`README.md` 尚未更新。`项目状态报告.txt` 将在本次总结后更新。
+    *   **下一步**：待所有功能稳定后，统一更新文档。
