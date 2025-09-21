@@ -6,8 +6,8 @@ import pandas as pd
 print(f"AkShare 版本: {ak.__version__}")
 
 try:
-    print("\n--- 正在测试 ak.sw_index_cons(symbol='801003')，超时设置为30秒 ---")
-    df = ak.sw_index_cons(symbol="801003", timeout=30)
+    print("\n--- 正在测试 ak.sw_index_third_cons()，超时设置为30秒 ---")
+    df = ak.sw_index_third_cons()
     print("调用成功！")
     print("\n列名:")
     print(df.columns)
