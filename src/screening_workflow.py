@@ -20,7 +20,10 @@ from src.screening_handler import (
 
 class ScreeningState(TypedDict):
     """Defines the state that is passed between nodes in the screening graph."""
-    stock_universe: List[str]
+    stock_universe: List[Dict] # Now stores list of dicts with code, name, industry
+    stock_codes: List[str] # List of just codes for batch fetching
+    stock_names_map: Dict[str, str] # Map from code to name
+    stock_industry_map: Dict[str, str] # Map from code to industry
     start_date: str
     end_date: str
     all_stock_data: Dict[str, pd.DataFrame] # Raw data for all stocks
@@ -33,13 +36,23 @@ class ScreeningState(TypedDict):
 # --- 2. Define the Nodes ---
 
 def get_universe_node(state: ScreeningState) -> ScreeningState:
-    """Node to fetch the stock universe."""
+    """Node to fetch the stock universe (code, name, industry) and create mappings."""
     print("-- 选股工作流: 1. 获取股票池 --")
     try:
-        universe = get_stock_universe()
-        if not universe:
+        universe_data = get_stock_universe() # This now returns List[Dict]
+        if not universe_data:
             return { "error": "未能获取股票池。" }
-        return { "stock_universe": universe }
+        
+        stock_codes = [item['代码'] for item in universe_data]
+        stock_names_map = {item['代码']: item['名称'] for item in universe_data}
+        stock_industry_map = {item['代码']: item.get('所属行业', '未知') for item in universe_data} # Use .get for safety
+        
+        return { 
+            "stock_universe": universe_data, # Store the full data
+            "stock_codes": stock_codes, # Store just codes for batch fetching
+            "stock_names_map": stock_names_map,
+            "stock_industry_map": stock_industry_map
+        }
     except Exception as e:
         return { "error": f"获取股票池时出错: {e}" }
 
@@ -47,10 +60,10 @@ def batch_get_data_node(state: ScreeningState) -> ScreeningState:
     """Node to batch fetch daily data for the stock universe."""
     print("-- 选股工作流: 2. 批量获取数据 --")
     try:
-        stock_list = state.get("stock_universe")
+        stock_codes = state.get("stock_codes") # Use stock_codes now
         start_date = state.get("start_date")
         end_date = state.get("end_date")
-        all_data = batch_get_stock_daily(stock_list, start_date, end_date)
+        all_data = batch_get_stock_daily(stock_codes, start_date, end_date)
         if not all_data:
             return { "error": "未能批量获取股票数据。" }
         return { "all_stock_data": all_data }

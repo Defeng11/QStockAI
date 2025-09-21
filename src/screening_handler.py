@@ -22,11 +22,12 @@ CACHE_DIR = "cache"
 UNIVERSE_CACHE_FILE = os.path.join(CACHE_DIR, "stock_universe_cache.json")
 CACHE_EXPIRATION_HOURS = 24 # Cache expires after 24 hours
 
-def get_stock_universe() -> List[str]:
+def get_stock_universe() -> List[Dict]: # Return list of dicts now
     """
-    Fetches a list of all A-share stock codes with caching.
+    Fetches a list of all A-share stock codes, names, and industry with caching.
+    Returns a list of dictionaries: [{'code': '000001', 'name': '平安银行', 'industry': '银行'}]
     """
-    print("正在获取股票池...")
+    print("正在获取股票池 (代码、名称、行业)...")
     
     # Ensure cache directory exists
     os.makedirs(CACHE_DIR, exist_ok=True)
@@ -39,23 +40,33 @@ def get_stock_universe() -> List[str]:
         if datetime.now() - last_modified_datetime < timedelta(hours=CACHE_EXPIRATION_HOURS):
             print("从缓存加载股票池...")
             with open(UNIVERSE_CACHE_FILE, "r", encoding="utf-8") as f:
-                stock_list = json.load(f)
-            print(f"已从缓存获取 {len(stock_list)} 只股票代码。")
-            return stock_list
+                stock_data = json.load(f)
+            print(f"已从缓存获取 {len(stock_data)} 只股票代码。")
+            return stock_data
 
-    print("从数据源获取股票池并更新缓存...")
+    print("从数据源获取股票池 (代码、名称、行业) 并更新缓存...")
     try:
-        # Use AkShare to get all A-share stock codes
-        # ak.stock_zh_a_spot_em() returns a DataFrame, we need the '代码' column
-        stock_df = ak.stock_zh_a_spot_em()
-        stock_list = stock_df["代码"].tolist()
+        # Use AkShare to get all A-share stock codes, names, and industry
+        # ak.stock_board_industry_spot_em() provides '代码', '名称', '所属行业'
+        stock_df = ak.stock_board_industry_spot_em()
         
+        # Select relevant columns and convert to list of dictionaries
+        # Ensure column names match what we expect: '代码', '名称', '所属行业'
+        if '代码' in stock_df.columns and '名称' in stock_df.columns and '所属行业' in stock_df.columns:
+            stock_data = stock_df[['代码', '名称', '所属行业']].to_dict(orient='records')
+        else:
+            print("警告: AkShare返回的股票行业数据缺少预期列。")
+            # Fallback to just code if columns are missing
+            stock_data = stock_df[['代码', '名称']].to_dict(orient='records') # Or handle as error
+            for item in stock_data:
+                item['所属行业'] = '未知' # Add placeholder for missing industry
+
         # Save to cache
         with open(UNIVERSE_CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(stock_list, f, ensure_ascii=False, indent=4)
+            json.dump(stock_data, f, ensure_ascii=False, indent=4)
         
-        print(f"已从数据源获取 {len(stock_list)} 只股票代码并更新缓存。")
-        return stock_list
+        print(f"已从数据源获取 {len(stock_data)} 只股票代码并更新缓存。")
+        return stock_data
     except Exception as e:
         print(f"获取股票池时发生错误: {e}。将返回空列表。")
         return []
