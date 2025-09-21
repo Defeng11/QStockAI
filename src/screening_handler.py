@@ -210,17 +210,21 @@ if __name__ == '__main__':
     test_end_date = "20240919"
 
     # 1. Get stock universe
-    universe = get_stock_universe()
+    universe_data = get_stock_universe() # This now returns List[Dict]
+    stock_names_map = {item['代码']: item['名称'] for item in universe_data}
+    stock_industry_map = {item['代码']: item.get('所属行业', '未知') for item in universe_data}
 
     # 2. Batch get data
-    all_data = batch_get_stock_daily(universe, test_start_date, test_end_date)
+    # Need to pass just stock codes to batch_get_stock_daily
+    stock_codes = [item['代码'] for item in universe_data]
+    all_data = batch_get_stock_daily(stock_codes, test_start_date, test_end_date)
 
     # 3. Batch apply strategy
     processed_all_data = batch_apply_strategy(all_data)
 
     # 4. Filter signals
-    buy_signals = filter_signals(processed_all_data, signal_type='buy', recent_days=10)
-    sell_signals = filter_signals(processed_all_data, signal_type='sell', recent_days=10)
+    buy_signals = filter_signals(processed_all_data, stock_names_map, stock_industry_map, signal_type='buy', recent_days=10)
+    sell_signals = filter_signals(processed_all_data, stock_names_map, stock_industry_map, signal_type='sell', recent_days=10)
 
     print("\n--- 筛选结果预览 ---")
     print("买入信号:", buy_signals)
