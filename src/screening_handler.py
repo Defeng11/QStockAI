@@ -22,7 +22,7 @@ CACHE_DIR = "cache"
 UNIVERSE_CACHE_FILE = os.path.join(CACHE_DIR, "stock_universe_cache.json")
 CACHE_EXPIRATION_HOURS = 24 # Cache expires after 24 hours
 
-def get_stock_universe() -> List[Dict]: # Return list of dicts now
+def get_stock_universe(force_refresh: bool = False) -> List[Dict]: # Return list of dicts now
     """
     Fetches a list of all A-share stock codes, names, and industry with caching.
     Returns a list of dictionaries: [{'code': '000001', 'name': '平安银行', 'industry': '银行'}]
@@ -33,7 +33,7 @@ def get_stock_universe() -> List[Dict]: # Return list of dicts now
     os.makedirs(CACHE_DIR, exist_ok=True)
 
     # Check if cache file exists and is fresh
-    if os.path.exists(UNIVERSE_CACHE_FILE):
+    if not force_refresh and os.path.exists(UNIVERSE_CACHE_FILE):
         last_modified_timestamp = os.path.getmtime(UNIVERSE_CACHE_FILE)
         last_modified_datetime = datetime.fromtimestamp(last_modified_timestamp)
         

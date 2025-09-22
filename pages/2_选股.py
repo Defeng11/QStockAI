@@ -35,6 +35,11 @@ def main():
 
         st.markdown("---")
         st.header("行业/板块筛选")
+        
+        if st.button("刷新股票池", use_container_width=True):
+            get_stock_universe(force_refresh=True)
+            st.success("股票池已刷新！")
+
         # Get stock universe to extract industries for filtering
         # This will use the cached data from screening_handler
         universe_data = get_stock_universe()
