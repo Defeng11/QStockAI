@@ -9,6 +9,7 @@ import pandas as pd
 import time
 import os
 import json
+import concurrent.futures
 from datetime import datetime, timedelta
 from typing import List, Dict
 
@@ -25,9 +26,37 @@ CACHE_EXPIRATION_HOURS = 24 # Cache expires after 24 hours
 
 
 
-def batch_get_stock_daily(stock_list: List[str], start_date: str, end_date: str, max_retries: int = 3, initial_delay: int = 2) -> Dict[str, pd.DataFrame]:
+def _fetch_single_stock_with_retry(args):
     """
-    Batch fetches daily data for a list of stock codes with rate limiting and exponential backoff.
+    Helper function to fetch data for a single stock with retry logic.
+    To be used by a ThreadPoolExecutor.
+    """
+    stock_code, start_date, end_date, max_retries, initial_delay = args
+    retries = 0
+    current_delay = initial_delay
+    while retries <= max_retries:
+        try:
+            df = get_stock_daily(stock_code, start_date, end_date)
+            if df is not None and not df.empty:
+                print(f"    {stock_code} 数据获取成功。")
+                return stock_code, df
+            else:
+                # This case is treated as a failure to be retried
+                raise ValueError(f"{stock_code} 数据获取为空。")
+        except Exception as e:
+            if retries < max_retries:
+                print(f"    获取 {stock_code} 数据时发生错误: {e}。重试 ({retries + 1}/{max_retries})，等待 {current_delay} 秒...")
+                time.sleep(current_delay)
+                current_delay *= 2  # Exponential backoff
+                retries += 1
+            else:
+                print(f"    获取 {stock_code} 数据时发生错误: {e}。达到最大重试次数，放弃获取。")
+                return stock_code, None # Return None on final failure
+    return stock_code, None
+
+def batch_get_stock_daily(stock_list: List[str], start_date: str, end_date: str, max_retries: int = 3, initial_delay: int = 1, max_workers: int = 10) -> Dict[str, pd.DataFrame]:
+    """
+    Concurrently fetches daily data for a list of stock codes using a thread pool.
 
     Args:
         stock_list (List[str]): List of stock codes.
@@ -35,50 +64,37 @@ def batch_get_stock_daily(stock_list: List[str], start_date: str, end_date: str,
         end_date (str): End date in YYYYMMDD format.
         max_retries (int): Maximum number of retries for each stock.
         initial_delay (int): Initial delay in seconds before retrying.
+        max_workers (int): The number of concurrent threads to use.
 
     Returns:
         Dict[str, pd.DataFrame]: A dictionary where keys are stock codes and values are their DataFrames.
     """
     total_stocks = len(stock_list)
-    print(f"正在批量获取 {total_stocks} 只股票的历史数据...")
+    if total_stocks == 0:
+        print("股票列表为空，无需获取数据。")
+        return {}
+        
+    print(f"正在通过 {max_workers} 个线程，批量获取 {total_stocks} 只股票的历史数据...")
     all_stock_data = {}
-    for i, stock_code in enumerate(stock_list):
-        # Calculate progress percentage
-        progress_percent = int(((i + 1) / total_stocks) * 100)
-        print(f"PROGRESS_BATCH_GET_DATA:{progress_percent}") # Progress indicator for workflow
+    
+    # Prepare arguments for each task
+    tasks = [(code, start_date, end_date, max_retries, initial_delay) for code in stock_list]
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Using executor.map to maintain order and simplify result collection
+        results = executor.map(_fetch_single_stock_with_retry, tasks)
         
-        print(f"  获取 {stock_code} 数据 ({i+1}/{total_stocks})... ")
-        retries = 0
-        current_delay = initial_delay
-        while retries <= max_retries:
-            try:
-                df = get_stock_daily(stock_code, start_date, end_date)
-                if not df.empty:
-                    all_stock_data[stock_code] = df
-                    print(f"    {stock_code} 数据获取成功。")
-                    break # Exit retry loop on success
-                else:
-                    print(f"    {stock_code} 数据获取失败或为空。")
-                    if retries < max_retries:
-                        print(f"    重试 {stock_code} ({retries + 1}/{max_retries})，等待 {current_delay} 秒...")
-                        time.sleep(current_delay)
-                        current_delay *= 2 # Exponential backoff
-                        retries += 1
-                    else:
-                        print(f"    {stock_code} 达到最大重试次数，放弃获取。")
-                        break # Exit retry loop after max retries
-            except Exception as e:
-                if retries < max_retries:
-                    print(f"    获取 {stock_code} 数据时发生错误: {e}。重试 ({retries + 1}/{max_retries})，等待 {current_delay} 秒...")
-                    time.sleep(current_delay)
-                    current_delay *= 2 # Exponential backoff
-                    retries += 1
-                else:
-                    print(f"    获取 {stock_code} 数据时发生错误: {e}。达到最大重试次数，放弃获取。")
-                    break # Exit retry loop after max retries
-        
-        # Add a general delay between different stock requests to be polite
-        time.sleep(initial_delay)
+        completed_count = 0
+        for stock_code, df in results:
+            if df is not None:
+                all_stock_data[stock_code] = df
+            
+            # Update progress
+            completed_count += 1
+            progress_percent = int((completed_count / total_stocks) * 100)
+            # Make sure progress is printed on a single line and flushed
+            print(f"PROGRESS_BATCH_GET_DATA:{progress_percent}", flush=True)
+            print(f"  进度: {completed_count}/{total_stocks} ({progress_percent}%)", flush=True)
 
     print("批量数据获取完成。")
     return all_stock_data
