@@ -47,27 +47,49 @@ def get_stock_universe(force_refresh: bool = False) -> List[Dict]: # Return list
     print("从数据源获取股票池 (代码、名称、行业) 并更新缓存...")
     try:
         stock_data = []
-        # --- Primary Attempt: Get industry list from Shenwan and then constituents ---
+        # --- Primary Attempt: Get industry list from local Tongdaxin tdxhy.cfg file ---
         try:
-            print(f"AkShare 版本: {ak.__version__}")
-            sw_index_df = ak.sw_index_third_cons()
-            
-            if sw_index_df.empty:
-                print("警告: AkShare sw_index_third_cons() 返回空DataFrame。")
-                raise ValueError("Empty Shenwan index constituent data")
+            tdx_hy_path = os.path.join("D:", "new_tdx", "T0002", "hq_cache", "tdxhy.cfg")
+            print(f"尝试从本地通达信行业文件读取: {tdx_hy_path}")
+            if not os.path.exists(tdx_hy_path):
+                raise FileNotFoundError("tdxhy.cfg not found")
 
-            # Rename columns to a standard format
-            sw_index_df.rename(columns={'股票代码': '代码', '股票简称': '名称', '申万3级': '所属行业'}, inplace=True)
-
-            if '代码' in sw_index_df.columns and '名称' in sw_index_df.columns and '所属行业' in sw_index_df.columns:
-                stock_data = sw_index_df[['代码', '名称', '所属行业']].to_dict(orient='records')
-                print(f"已从AkShare (申万行业) 获取 {len(stock_data)} 只股票代码并更新缓存。")
-            else:
-                print("警告: AkShare sw_index_third_cons() 缺少预期列。")
-                raise ValueError("Missing expected columns in Shenwan index constituent data")
+            with open(tdx_hy_path, "r", encoding="gbk") as f:
+                lines = f.readlines()
             
+            # Parse tdxhy.cfg file
+            # The format is: industry_code|industry_name|... and then stock_code|industry_code|...
+            industry_map = {}
+            for line in lines:
+                parts = line.strip().split('|')
+                if len(parts) >= 2 and parts[0].startswith('TDX'): # Industry definition
+                    industry_map[parts[0]] = parts[1]
+                elif len(parts) >= 2: # Stock to industry mapping
+                    stock_code = parts[0]
+                    industry_code = parts[1]
+                    if industry_code in industry_map:
+                        stock_data.append({
+                            '代码': stock_code,
+                            '名称': '未知', # tdxhy.cfg does not contain stock names
+                            '所属行业': industry_map[industry_code]
+                        })
+
+            if not stock_data:
+                raise ValueError("No stock data parsed from tdxhy.cfg")
+
+            # Get stock names as a separate step
+            all_codes = [item['代码'] for item in stock_data]
+            stock_info_df = ak.stock_info_a_code_name()
+            stock_info_df.rename(columns={'code': '代码', 'name': '名称'}, inplace=True)
+            name_map = stock_info_df.set_index('代码')['名称'].to_dict()
+
+            for item in stock_data:
+                item['名称'] = name_map.get(item['代码'], '未知')
+
+            print(f"已从本地通达信行业文件获取 {len(stock_data)} 只股票代码并更新缓存。")
+
         except Exception as e:
-            print(f"从AkShare (申万行业) 获取股票池时发生错误: {e}。将尝试备用接口。")
+            print(f"从本地通达信行业文件获取股票池时发生错误: {e}。将尝试备用接口。")
             stock_data = [] # Clear any partial data
 
             # --- Fallback Attempt: Get all A-share codes and names, set industry to '未知' ---
@@ -91,7 +113,7 @@ def get_stock_universe(force_refresh: bool = False) -> List[Dict]: # Return list
                 stock_data = [] # Ensure empty if fallback also fails
 
         if not stock_data:
-            print("未能从AkShare获取到任何股票数据。将返回空列表。")
+            print("未能从任何数据源获取到任何股票数据。将返回空列表。")
             return []
 
         # Save to cache
