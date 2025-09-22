@@ -57,7 +57,7 @@ def get_stock_universe(force_refresh: bool = False) -> List[Dict]: # Return list
                 raise ValueError("Empty Shenwan index constituent data")
 
             # Rename columns to a standard format
-            sw_index_df.rename(columns={'股票代码': '代码', '股票简称': '名称', '申万3级': '所属行业'}, inplace=True)
+            sw_index_df.rename(columns={'股票代码': '代码', '股票简称': '名称', '申万1级': '所属行业'}, inplace=True)
 
             if '代码' in sw_index_df.columns and '名称' in sw_index_df.columns and '所属行业' in sw_index_df.columns:
                 stock_data = sw_index_df[['代码', '名称', '所属行业']].to_dict(orient='records')
