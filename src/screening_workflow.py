@@ -20,6 +20,7 @@ from src.screening_handler import (
 
 class ScreeningState(TypedDict):
     """Defines the state that is passed between nodes in the screening graph."""
+    selected_industries: List[str] # The industries selected by the user in the UI
     stock_universe: List[Dict] # Now stores list of dicts with code, name, industry
     stock_codes: List[str] # List of just codes for batch fetching
     stock_names_map: Dict[str, str] # Map from code to name
