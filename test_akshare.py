@@ -54,15 +54,16 @@ def test_get_stock_universe_logic(force_refresh: bool = False) -> List[Dict]:
         # Based on previous test, columns are '股票代码', '股票简称', '申万1级', '申万2级', '申万3级'
         sw_index_df.rename(columns={'股票代码': '代码', '股票简称': '名称', '申万1级': '所属行业'}, inplace=True)
 
-                    if '代码' in sw_index_df.columns and '名称' in sw_index_df.columns and '所属行业' in sw_index_df.columns:
-                        processed_stock_data = []
-                        for item in sw_index_df[['代码', '名称', '所属行业']].to_dict(orient='records'):
-                            stock_code_raw = item['代码']
-                            stock_code_clean = stock_code_raw.split('.')[0] # Remove .SH or .SZ suffix
-                            item['代码'] = stock_code_clean
-                            processed_stock_data.append(item)
-                        stock_data = processed_stock_data
-                        print(f"已从AkShare (申万行业) 获取 {len(stock_data)} 只股票代码。")        else:
+        if '代码' in sw_index_df.columns and '名称' in sw_index_df.columns and '所属行业' in sw_index_df.columns:
+            processed_stock_data = []
+            for item in sw_index_df[['代码', '名称', '所属行业']].to_dict(orient='records'):
+                stock_code_raw = item['代码']
+                stock_code_clean = stock_code_raw.split('.')[0] # Remove .SH or .SZ suffix
+                item['代码'] = stock_code_clean
+                processed_stock_data.append(item)
+            stock_data = processed_stock_data
+            print(f"已从AkShare (申万行业) 获取 {len(stock_data)} 只股票代码。")
+        else:
             print("警告: AkShare sw_index_third_cons() 缺少预期列。")
             raise ValueError("Missing expected columns in Shenwan index constituent data")
         
