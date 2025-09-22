@@ -16,6 +16,7 @@ from typing import List, Dict
 # Import necessary modules from src
 from src.data_handler import get_stock_daily, get_stock_universe
 from src.strategy_handler import apply_five_step_integrated_strategy
+from src.analysis_handler import calculate_strategy_indicators
 import akshare as ak
 
 # Define cache directory and file
@@ -103,9 +104,10 @@ def batch_get_stock_daily(stock_list: List[str], start_date: str, end_date: str,
 def batch_apply_strategy(data_dict: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
     """
     Applies the five-step integrated strategy to each stock's DataFrame in the dictionary.
+    This now includes calculating the necessary indicators before applying the strategy.
 
     Args:
-        data_dict (Dict[str, pd.DataFrame]): Dictionary of stock codes to their DataFrames.
+        data_dict (Dict[str, pd.DataFrame]): Dictionary of stock codes to their raw DataFrames.
 
     Returns:
         Dict[str, pd.DataFrame]: Dictionary with strategy applied and 'signal' column added.
@@ -116,12 +118,16 @@ def batch_apply_strategy(data_dict: Dict[str, pd.DataFrame]) -> Dict[str, pd.Dat
     for i, (stock_code, df) in enumerate(data_dict.items()):
         # Calculate progress percentage
         progress_percent = int(((i + 1) / total_stocks) * 100)
-        print(f"PROGRESS_BATCH_APPLY_STRATEGY:{progress_percent}") # Progress indicator for workflow
+        print(f"PROGRESS_BATCH_APPLY_STRATEGY:{progress_percent}", flush=True)
 
         if not df.empty:
             print(f"  对 {stock_code} 应用策略 ({i+1}/{total_stocks})... ")
             try:
-                df_with_signals = apply_five_step_integrated_strategy(df)
+                # Step 1: Calculate indicators required by the strategy
+                df_with_indicators = calculate_strategy_indicators(df)
+                
+                # Step 2: Apply the actual strategy function
+                df_with_signals = apply_five_step_integrated_strategy(df_with_indicators)
                 processed_data[stock_code] = df_with_signals
             except Exception as e:
                 print(f"    对 {stock_code} 应用策略时发生错误: {e}")
