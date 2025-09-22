@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict
 
 # Import necessary modules from src
-from src.data_handler import get_stock_daily
+from src.data_handler import get_stock_daily, get_stock_universe
 from src.strategy_handler import apply_five_step_integrated_strategy
 import akshare as ak
 
@@ -22,86 +22,7 @@ CACHE_DIR = "cache"
 UNIVERSE_CACHE_FILE = os.path.join(CACHE_DIR, "stock_universe_cache.json")
 CACHE_EXPIRATION_HOURS = 24 # Cache expires after 24 hours
 
-def get_stock_universe(force_refresh: bool = False) -> List[Dict]: # Return list of dicts now
-    """
-    Fetches a list of all A-share stock codes, names, and industry with caching.
-    Returns a list of dictionaries: [{'code': '000001', 'name': '平安银行', 'industry': '银行'}]
-    """
-    print("正在获取股票池 (代码、名称、行业)...")
-    
-    # Ensure cache directory exists
-    os.makedirs(CACHE_DIR, exist_ok=True)
 
-    # Check if cache file exists and is fresh
-    if not force_refresh and os.path.exists(UNIVERSE_CACHE_FILE):
-        last_modified_timestamp = os.path.getmtime(UNIVERSE_CACHE_FILE)
-        last_modified_datetime = datetime.fromtimestamp(last_modified_timestamp)
-        
-        if datetime.now() - last_modified_datetime < timedelta(hours=CACHE_EXPIRATION_HOURS):
-            print("从缓存加载股票池...")
-            with open(UNIVERSE_CACHE_FILE, "r", encoding="utf-8") as f:
-                stock_data = json.load(f)
-            print(f"已从缓存获取 {len(stock_data)} 只股票代码。")
-            return stock_data
-
-    print("从数据源获取股票池 (代码、名称、行业) 并更新缓存...")
-    try:
-        stock_data = []
-        # --- Primary Attempt: Get industry list from Shenwan and then constituents ---
-        try:
-            print(f"AkShare 版本: {ak.__version__}")
-            sw_index_df = ak.sw_index_third_cons()
-            
-            if sw_index_df.empty:
-                print("警告: AkShare sw_index_third_cons() 返回空DataFrame。")
-                raise ValueError("Empty Shenwan index constituent data")
-
-            # Rename columns to a standard format
-            sw_index_df.rename(columns={'股票代码': '代码', '股票简称': '名称', '申万1级': '所属行业'}, inplace=True)
-
-            if '代码' in sw_index_df.columns and '名称' in sw_index_df.columns and '所属行业' in sw_index_df.columns:
-                stock_data = sw_index_df[['代码', '名称', '所属行业']].to_dict(orient='records')
-                print(f"已从AkShare (申万行业) 获取 {len(stock_data)} 只股票代码并更新缓存。")
-            else:
-                print("警告: AkShare sw_index_third_cons() 缺少预期列。")
-                raise ValueError("Missing expected columns in Shenwan index constituent data")
-            
-        except Exception as e:
-            print(f"从AkShare (申万行业) 获取股票池时发生错误: {e}。将尝试备用接口。")
-            stock_data = [] # Clear any partial data
-
-            # --- Fallback Attempt: Get all A-share codes and names, set industry to '未知' ---
-            try:
-                stock_info_df = ak.stock_info_a_code_name()
-                if not stock_info_df.empty:
-                    if 'code' in stock_info_df.columns and 'name' in stock_info_df.columns:
-                        for _, row in stock_info_df.iterrows():
-                            stock_data.append({
-                                '代码': row['code'],
-                                '名称': row['name'],
-                                '所属行业': '未知' # Set industry to unknown
-                            })
-                        print(f"已从AkShare (备用接口) 获取 {len(stock_data)} 只股票代码并更新缓存。")
-                    else:
-                        print("警告: AkShare stock_info_a_code_name() 缺少预期列。")
-                else:
-                    print("警告: AkShare stock_info_a_code_name() 返回空DataFrame。")
-            except Exception as e_fallback:
-                print(f"从AkShare (备用接口) 获取股票池时发生错误: {e_fallback}。")
-                stock_data = [] # Ensure empty if fallback also fails
-
-        if not stock_data:
-            print("未能从AkShare获取到任何股票数据。将返回空列表。")
-            return []
-
-        # Save to cache
-        with open(UNIVERSE_CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(stock_data, f, ensure_ascii=False, indent=4)
-        
-        return stock_data
-    except Exception as e:
-        print(f"获取股票池时发生错误: {e}。将返回空列表。")
-        return []
 
 
 def batch_get_stock_daily(stock_list: List[str], start_date: str, end_date: str, max_retries: int = 3, initial_delay: int = 2) -> Dict[str, pd.DataFrame]:
