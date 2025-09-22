@@ -97,6 +97,29 @@ def add_technical_indicators(df: pd.DataFrame, indicators: list[str]) -> pd.Data
     print("技术指标计算完成。")
     return df_with_indicators
 
+def calculate_strategy_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculates all necessary technical indicators for the five-step strategy.
+    """
+    df_out = df.copy()
+    
+    # 1. MA (Moving Average)
+    df_out['ma20'] = talib.SMA(df_out['close'], timeperiod=20)
+    df_out['ma200'] = talib.SMA(df_out['close'], timeperiod=200)
+    
+    # 2. MACD (Moving Average Convergence Divergence)
+    macd, macdsignal, macdhist = talib.MACD(df_out['close'], fastperiod=12, slowperiod=26, signalperiod=9)
+    df_out['macd'] = macd
+    df_out['macdsignal'] = macdsignal
+    df_out['macdhist'] = macdhist
+    
+    # 3. RSI (Relative Strength Index)
+    df_out['rsi'] = talib.RSI(df_out['close'], timeperiod=14)
+    
+    print("  - 已计算策略所需指标 (MA20, MA200, MACD, RSI)")
+    return df_out
+
+
 # --- Test Block ---
 if __name__ == '__main__':
     # This block is for testing the functions in this module directly.
