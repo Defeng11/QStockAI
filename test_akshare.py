@@ -42,29 +42,28 @@ def test_get_stock_universe_logic(force_refresh: bool = False) -> List[Dict]:
     print("从数据源获取股票池 (代码、名称、行业) 并更新测试缓存...")
     stock_data = []
     try:
-        # --- Primary Attempt: Get all Shenwan (Level 1) industries and their constituents ---
+        # --- Primary Attempt: Get all Eastmoney industries and their constituents ---
         print(f"AkShare 版本: {ak.__version__}")
-        industry_summary_df = ak.stock_board_industry_name_sw(level="1")
+        industry_summary_df = ak.stock_board_industry_name_em()
         
-        if industry_summary_df.empty or 'industry_name' not in industry_summary_df.columns or 'index_code' not in industry_summary_df.columns:
-            print("警告: AkShare stock_board_industry_name_sw() 返回空DataFrame或缺少 'industry_name'/'index_code' 列。")
-            raise ValueError("Empty or invalid Shenwan industry summary data")
+        if industry_summary_df.empty or '板块名称' not in industry_summary_df.columns:
+            print("警告: AkShare stock_board_industry_name_em() 返回空DataFrame或缺少 '板块名称' 列。")
+            raise ValueError("Empty or invalid Eastmoney industry summary data")
 
         total_industries = len(industry_summary_df)
         for i, row in industry_summary_df.iterrows():
-            industry_name = row['industry_name']
-            industry_code = row['index_code'] # Use index_code for cons_sw
-            print(f"  正在获取行业 '{industry_name}' (代码: {industry_code}) 下的股票 ({i+1}/{total_industries})...")
+            industry_name = row['板块名称']
+            print(f"  正在获取行业 '{industry_name}' 下的股票 ({i+1}/{total_industries})...")
             try:
-                cons_df = ak.stock_board_industry_cons_sw(symbol=industry_code)
-                if not cons_df.empty and 'code' in cons_df.columns and 'name' in cons_df.columns:
+                cons_df = ak.stock_board_industry_cons_em(symbol=industry_name)
+                if not cons_df.empty and '代码' in cons_df.columns and '名称' in cons_df.columns:
                     for _, stock_row in cons_df.iterrows():
-                        stock_code_raw = str(stock_row['code'])
+                        stock_code_raw = str(stock_row['代码'])
                         # Remove .SH or .SZ suffix
                         stock_code_clean = stock_code_raw.split('.')[0]
                         stock_data.append({
                             '代码': stock_code_clean,
-                            '名称': stock_row['name'],
+                            '名称': stock_row['名称'],
                             '所属行业': industry_name
                         })
                 else:
@@ -73,15 +72,15 @@ def test_get_stock_universe_logic(force_refresh: bool = False) -> List[Dict]:
                 print(f"    获取行业 '{industry_name}' 股票时发生错误: {e}")
             time.sleep(1) # Polite delay between industry calls
 
-        if not stock_data: # If no data collected from SW industries
-            raise ValueError("No stock data collected from Shenwan industries")
+        if not stock_data: # If no data collected from EM industries
+            raise ValueError("No stock data collected from Eastmoney industries")
 
         stock_df_final = pd.DataFrame(stock_data).drop_duplicates(subset=['代码'])
         stock_data = stock_df_final.to_dict(orient='records')
-        print(f"已从AkShare (申万行业) 获取 {len(stock_data)} 只股票代码。")
+        print(f"已从AkShare (东方财富行业) 获取 {len(stock_data)} 只股票代码。")
         
     except Exception as e:
-        print(f"从AkShare (申万行业) 获取股票池时发生错误: {e}。将尝试备用接口。")
+        print(f"从AkShare (东方财富行业) 获取股票池时发生错误: {e}。将尝试备用接口。")
         stock_data = [] # Clear any partial data
 
         # --- Fallback Attempt: Get all A-share codes and names, set industry to '未知' ---
