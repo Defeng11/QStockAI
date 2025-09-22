@@ -10,7 +10,7 @@ try:
     df = ak.sw_index_third_cons()
     print("调用成功！")
     print("\n列名:")
-    print(df.columns)
+    print(df.columns.tolist())
     print("\n前5行数据:")
     print(df.head())
 except Exception as e:
