@@ -47,56 +47,58 @@ def get_stock_universe(force_refresh: bool = False) -> List[Dict]: # Return list
     print("从数据源获取股票池 (代码、名称、行业) 并更新缓存...")
     try:
         stock_data = []
-        # --- Step 1: Get all A-share codes and names (primary source) ---
-        print(f"AkShare 版本: {ak.__version__}")
-        stock_info_df = ak.stock_info_a_code_name()
-        
-        if stock_info_df.empty:
-            print("警告: AkShare stock_info_a_code_name() 返回空DataFrame。")
-            raise ValueError("Empty stock info data from primary source")
-
-        # Normalize column names and initialize industry as '未知'
-        stock_info_df.rename(columns={'code': '代码', 'name': '名称'}, inplace=True)
-        stock_info_df['所属行业'] = '未知'
-        
-        # Convert to list of dicts
-        stock_data = stock_info_df[['代码', '名称', '所属行业']].to_dict(orient='records')
-        print(f"已从AkShare (主接口) 获取 {len(stock_data)} 只股票代码和名称。")
-
-        # --- Step 2: Attempt to enrich with Shenwan industry data ---
+        # --- Primary Attempt: Get industry list from Shenwan and then constituents ---
         try:
-            sw_industry_df = ak.sw_index_third_cons()
-            if not sw_industry_df.empty:
-                # Normalize Shenwan columns
-                sw_industry_df.rename(columns={'股票代码': '代码', '股票简称': '名称', '申万1级': '所属行业'}, inplace=True)
-                
-                # Create a map for quick lookup
-                sw_industry_map = {row['代码'].split('.')[0]: row['所属行业'] for _, row in sw_industry_df.iterrows() if '代码' in row and '所属行业' in row}
-                
-                # Enrich stock_data with Shenwan industry
-                for item in stock_data:
-                    clean_code = item['代码'].split('.')[0] # Ensure code is clean for lookup
-                    if clean_code in sw_industry_map:
-                        item['所属行业'] = sw_industry_map[clean_code]
-                print(f"已使用AkShare (申万行业) 补充行业信息。")
+            print(f"AkShare 版本: {ak.__version__}")
+            sw_index_df = ak.sw_index_third_cons()
+            
+            if sw_index_df.empty:
+                print("警告: AkShare sw_index_third_cons() 返回空DataFrame。")
+                raise ValueError("Empty Shenwan index constituent data")
+
+            # Rename columns to a standard format
+            sw_index_df.rename(columns={'股票代码': '代码', '股票简称': '名称', '申万1级': '所属行业'}, inplace=True)
+
+            if '代码' in sw_index_df.columns and '名称' in sw_index_df.columns and '所属行业' in sw_index_df.columns:
+                stock_data = sw_index_df[['代码', '名称', '所属行业']].to_dict(orient='records')
+                print(f"已从AkShare (申万行业) 获取 {len(stock_data)} 只股票代码并更新缓存。")
             else:
-                print("警告: AkShare sw_index_third_cons() 返回空DataFrame，未能补充行业信息。")
-        except Exception as e_sw:
-            print(f"从AkShare (申万行业) 补充行业信息时发生错误: {e_sw}。将使用 '未知' 行业。")
+                print("警告: AkShare sw_index_third_cons() 缺少预期列。")
+                raise ValueError("Missing expected columns in Shenwan index constituent data")
+            
+        except Exception as e:
+            print(f"从AkShare (申万行业) 获取股票池时发生错误: {e}。将尝试备用接口。")
+            stock_data = [] # Clear any partial data
 
-        # Ensure all codes are clean (remove .SH/.SZ suffix)
-        for item in stock_data:
-            item['代码'] = item['代码'].split('.')[0]
+            # --- Fallback Attempt: Get all A-share codes and names, set industry to '未知' ---
+            try:
+                stock_info_df = ak.stock_info_a_code_name()
+                if not stock_info_df.empty:
+                    if 'code' in stock_info_df.columns and 'name' in stock_info_df.columns:
+                        for _, row in stock_info_df.iterrows():
+                            stock_data.append({
+                                '代码': row['code'],
+                                '名称': row['name'],
+                                '所属行业': '未知' # Set industry to unknown
+                            })
+                        print(f"已从AkShare (备用接口) 获取 {len(stock_data)} 只股票代码并更新缓存。")
+                    else:
+                        print("警告: AkShare stock_info_a_code_name() 缺少预期列。")
+                else:
+                    print("警告: AkShare stock_info_a_code_name() 返回空DataFrame。")
+            except Exception as e_fallback:
+                print(f"从AkShare (备用接口) 获取股票池时发生错误: {e_fallback}。")
+                stock_data = [] # Ensure empty if fallback also fails
 
-        # Remove duplicates based on cleaned code
-        stock_df_final = pd.DataFrame(stock_data).drop_duplicates(subset=['代码'])
-        stock_data = stock_df_final.to_dict(orient='records')
+        if not stock_data:
+            print("未能从AkShare获取到任何股票数据。将返回空列表。")
+            return []
+
+        # Save to cache
+        with open(UNIVERSE_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(stock_data, f, ensure_ascii=False, indent=4)
         
-        print(f"最终获取到 {len(stock_data)} 只股票代码 (含名称和行业)。")
         return stock_data
-    except Exception as e:
-        print(f"获取股票池时发生错误: {e}。将返回空列表。")
-        return []
     except Exception as e:
         print(f"获取股票池时发生错误: {e}。将返回空列表。")
         return []
