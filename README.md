@@ -1,4 +1,4 @@
-# LiangZiXuanGu · 量子选股
+# QStockAI
 
 > "The universe is not only stranger than we imagine, it is stranger than we can imagine." - Werner Heisenberg
 
