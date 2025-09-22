@@ -44,7 +44,7 @@ def main():
         # This will use the cached data from screening_handler
         universe_data = get_stock_universe()
         all_industries = sorted(list(set([item.get('所属行业', '未知') for item in universe_data])))
-        selected_industries = st.multiselect("选择行业/板块", options=all_industries, default=all_industries)
+        selected_industries = st.multiselect("选择行业/板块", options=all_industries, default=None)
 
         start_screening_button = st.button("开始选股", type="primary", use_container_width=True)
         st.markdown("---")
