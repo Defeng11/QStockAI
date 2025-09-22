@@ -36,25 +36,49 @@ class ScreeningState(TypedDict):
 # --- 2. Define the Nodes ---
 
 def get_universe_node(state: ScreeningState) -> ScreeningState:
-    """Node to fetch the stock universe (code, name, industry) and create mappings."""
-    print("-- 选股工作流: 1. 获取股票池 --")
+    """Node to fetch and filter the stock universe based on selected industries."""
+    print("-- 选股工作流: 1. 获取并筛选股票池 --")
     try:
-        universe_data = get_stock_universe() # This now returns List[Dict]
-        if not universe_data:
+        # Step 1: Fetch the full universe
+        full_universe_data = get_stock_universe()
+        if not full_universe_data:
             return { "error": "未能获取股票池。" }
+
+        # Step 2: Filter the universe based on selection
+        selected_industries = state.get("selected_industries")
         
-        stock_codes = [item['代码'] for item in universe_data]
-        stock_names_map = {item['代码']: item['名称'] for item in universe_data}
-        stock_industry_map = {item['代码']: item.get('所属行业', '未知') for item in universe_data} # Use .get for safety
+        # Create a full list of all industries to check if the user selected all
+        all_industries = sorted(list(set([item.get('所属行业', '未知') for item in full_universe_data])))
+
+        # Filter only if a specific subset of industries is selected
+        if selected_industries and set(selected_industries) != set(all_industries):
+            print(f"根据选择的行业进行筛选: {selected_industries}")
+            filtered_universe = [
+                stock for stock in full_universe_data 
+                if stock.get('所属行业') in selected_industries
+            ]
+        else:
+            print("未指定特定行业或选择了所有行业，将使用完整股票池。")
+            filtered_universe = full_universe_data
+        
+        if not filtered_universe:
+             return { "error": f"在所选行业 {selected_industries} 中未找到任何股票。" }
+
+        print(f"筛选后剩余 {len(filtered_universe)} 只股票。")
+
+        # Step 3: Create mappings from the filtered universe
+        stock_codes = [item['代码'] for item in filtered_universe]
+        stock_names_map = {item['代码']: item['名称'] for item in filtered_universe}
+        stock_industry_map = {item['代码']: item.get('所属行业', '未知') for item in filtered_universe}
         
         return { 
-            "stock_universe": universe_data, # Store the full data
-            "stock_codes": stock_codes, # Store just codes for batch fetching
+            "stock_universe": filtered_universe, # Store the filtered data
+            "stock_codes": stock_codes,
             "stock_names_map": stock_names_map,
             "stock_industry_map": stock_industry_map
         }
     except Exception as e:
-        return { "error": f"获取股票池时出错: {e}" }
+        return { "error": f"获取或筛选股票池时出错: {e}" }
 
 def batch_get_data_node(state: ScreeningState) -> ScreeningState:
     """Node to batch fetch daily data for the stock universe."""
