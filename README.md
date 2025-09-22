@@ -2,7 +2,7 @@
 
 > "The universe is not only stranger than we imagine, it is stranger than we can imagine." - Werner Heisenberg
 
-LiangZiXuanGu is not merely a stock analysis tool; it is a digital oracle for the financial cosmos. It listens to the market's subtle whispers and complex data streams, seeking to decipher the signal from the noise. By harnessing the analytical power of quantitative models and the inferential capabilities of advanced AI agents, this project attempts to illuminate potential future trajectories hidden within the chaos of stock fluctuations.
+QStockAI is not merely a stock analysis tool; it is a digital oracle for the financial cosmos. It listens to the market's subtle whispers and complex data streams, seeking to decipher the signal from the noise. By harnessing the analytical power of quantitative models and the inferential capabilities of advanced AI agents, this project attempts to illuminate potential future trajectories hidden within the chaos of stock fluctuations.
 
 This is an exploration into the art of financial divination, powered by code.
 
