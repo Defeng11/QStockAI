@@ -50,21 +50,38 @@ def get_stock_universe(force_refresh: bool = False) -> List[Dict]: # Return list
         # --- Primary Attempt: Get industry list from Shenwan and then constituents ---
         try:
             print(f"AkShare 版本: {ak.__version__}")
-            sw_index_df = ak.sw_index_third_cons()
+            industry_df = ak.stock_board_industry_name_sw(level="3")
             
-            if sw_index_df.empty:
-                print("警告: AkShare sw_index_third_cons() 返回空DataFrame。")
-                raise ValueError("Empty Shenwan index constituent data")
+            if industry_df.empty or 'industry_name' not in industry_df.columns:
+                print("警告: 未能获取到申万行业列表或 industry_name 列缺失。")
+                raise ValueError("Empty or invalid Shenwan industry summary data")
 
-            # Rename columns to a standard format
-            sw_index_df.rename(columns={'股票代码': '代码', '股票简称': '名称', '申万3级': '所属行业'}, inplace=True)
+            total_industries = len(industry_df)
+            for i, row in industry_df.iterrows():
+                industry_name = row['industry_name']
+                industry_code = row['index_code']
+                print(f"  正在获取行业 '{industry_name}' 下的股票 ({i+1}/{total_industries})...")
+                try:
+                    cons_df = ak.stock_board_industry_cons_sw(symbol=industry_code)
+                    if not cons_df.empty and 'code' in cons_df.columns and 'name' in cons_df.columns:
+                        for _, stock_row in cons_df.iterrows():
+                            stock_data.append({
+                                '代码': stock_row['code'],
+                                '名称': stock_row['name'],
+                                '所属行业': industry_name
+                            })
+                    else:
+                        print(f"    警告: 行业 '{industry_name}' 下未能获取到股票数据或缺少预期列。")
+                except Exception as e:
+                    print(f"    获取行业 '{industry_name}' 股票时发生错误: {e}")
+                time.sleep(1) # Polite delay between industry calls
 
-            if '代码' in sw_index_df.columns and '名称' in sw_index_df.columns and '所属行业' in sw_index_df.columns:
-                stock_data = sw_index_df[['代码', '名称', '所属行业']].to_dict(orient='records')
-                print(f"已从AkShare (申万行业) 获取 {len(stock_data)} 只股票代码并更新缓存。")
-            else:
-                print("警告: AkShare sw_index_third_cons() 缺少预期列。")
-                raise ValueError("Missing expected columns in Shenwan index constituent data")
+            if not stock_data: # If no data collected from SW industries
+                raise ValueError("No stock data collected from Shenwan industries")
+
+            stock_df_final = pd.DataFrame(stock_data).drop_duplicates(subset=['代码'])
+            stock_data = stock_df_final.to_dict(orient='records')
+            print(f"已从AkShare (申万行业) 获取 {len(stock_data)} 只股票代码并更新缓存。")
             
         except Exception as e:
             print(f"从AkShare (申万行业) 获取股票池时发生错误: {e}。将尝试备用接口。")
