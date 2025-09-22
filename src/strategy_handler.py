@@ -63,7 +63,7 @@ def apply_five_step_integrated_strategy(df: pd.DataFrame) -> pd.DataFrame:
 
     Args:
         df (pd.DataFrame): DataFrame with pre-calculated technical indicators.
-                           Requires: 'close', 'ma20', 'ma200', 'macd_hist', 'rsi',
+                           Requires: 'close', 'ma20', 'ma200', 'macdhist', 'rsi',
                                      'volume'.
 
     Returns:
