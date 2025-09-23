@@ -36,8 +36,6 @@ def main():
             recent_days = st.slider("信号回溯天数 (最近几天内)", min_value=1, max_value=30, value=5)
 
         with col2: # Right column
-            st.markdown("### 板块数据") # New sub-header for this section
-            # Industry/Sector Filtering
             # Change button text and functionality
             if st.button("更新板块数据", use_container_width=True): # Changed button text
                 get_stock_universe(force_refresh=True)
@@ -45,10 +43,28 @@ def main():
 
             universe_data = get_stock_universe()
             all_industries = sorted(list(set([item.get('所属行业', '未知') for item in universe_data])))
-            selected_industries = st.multiselect("选择行业/板块", options=all_industries, default=None)
             
-            # Add some vertical space to align with left column
-            st.markdown("<br>" * 3, unsafe_allow_html=True) # Adjust as needed for alignment
+            st.markdown("#### 选择行业/板块") # New sub-header for checkboxes
+
+            # --- Checkbox Grid for Industries ---
+            num_cols_checkbox = 3 # Number of columns for checkboxes
+            cols_checkbox = st.columns(num_cols_checkbox)
+            
+            # Initialize selected_industries in session_state if not present
+            if 'selected_industries_checkbox' not in st.session_state:
+                st.session_state.selected_industries_checkbox = []
+
+            # Create checkboxes and update session state
+            selected_industries_temp = []
+            for i, industry in enumerate(all_industries):
+                with cols_checkbox[i % num_cols_checkbox]: # Place checkbox in a column
+                    # Use a unique key for each checkbox
+                    if st.checkbox(industry, value=(industry in st.session_state.selected_industries_checkbox), key=f"industry_checkbox_{industry}"):
+                        selected_industries_temp.append(industry)
+            
+            # Update the actual selected_industries for the workflow
+            selected_industries = selected_industries_temp
+            st.session_state.selected_industries_checkbox = selected_industries_temp # Store for persistence
 
         st.markdown("---") # Separator below columns
 
