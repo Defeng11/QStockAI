@@ -20,32 +20,39 @@ def main():
 
     # --- Expander 1: Filtering Settings and Actions ---
     with st.expander("⚙️ 筛选设置与操作"): # New expander
-        # Date range selection for screening data
-        today = datetime.now()
-        one_year_ago = today - timedelta(days=365)
-        start_date = st.date_input("数据开始日期", value=one_year_ago, min_value=datetime(2010, 1, 1), max_value=today)
-        end_date = st.date_input("数据结束日期", value=today, min_value=start_date, max_value=today)
+        col1, col2 = st.columns(2) # Create two columns
 
-        # Signal type selection
-        signal_type = st.selectbox("信号类型", ["buy", "sell"], format_func=lambda x: "买入信号" if x == "buy" else "卖出信号")
-        
-        # Recent days for signal filtering
-        recent_days = st.slider("信号回溯天数 (最近几天内)", min_value=1, max_value=30, value=5)
+        with col1: # Left column
+            # Date range selection for screening data
+            today = datetime.now()
+            one_year_ago = today - timedelta(days=365)
+            start_date = st.date_input("数据开始日期", value=one_year_ago, min_value=datetime(2010, 1, 1), max_value=today)
+            end_date = st.date_input("数据结束日期", value=today, min_value=start_date, max_value=today)
 
-        st.markdown("---") # Separator
+            # Signal type selection
+            signal_type = st.selectbox("信号类型", ["buy", "sell"], format_func=lambda x: "买入信号" if x == "buy" else "卖出信号")
+            
+            # Recent days for signal filtering
+            recent_days = st.slider("信号回溯天数 (最近几天内)", min_value=1, max_value=30, value=5)
 
-        # Industry/Sector Filtering
-        if st.button("刷新股票池", use_container_width=True):
-            get_stock_universe(force_refresh=True)
-            st.success("股票池已刷新！")
+        with col2: # Right column
+            st.markdown("### 板块数据") # New sub-header for this section
+            # Industry/Sector Filtering
+            # Change button text and functionality
+            if st.button("更新板块数据", use_container_width=True): # Changed button text
+                get_stock_universe(force_refresh=True)
+                st.success("股票池已刷新！")
 
-        universe_data = get_stock_universe()
-        all_industries = sorted(list(set([item.get('所属行业', '未知') for item in universe_data])))
-        selected_industries = st.multiselect("选择行业/板块", options=all_industries, default=None)
+            universe_data = get_stock_universe()
+            all_industries = sorted(list(set([item.get('所属行业', '未知') for item in universe_data])))
+            selected_industries = st.multiselect("选择行业/板块", options=all_industries, default=None)
+            
+            # Add some vertical space to align with left column
+            st.markdown("<br>" * 3, unsafe_allow_html=True) # Adjust as needed for alignment
 
-        st.markdown("---") # Separator
+        st.markdown("---") # Separator below columns
 
-        # Action Button
+        # Action Button (outside columns, spans full width)
         start_screening_button = st.button("开始选股", type="primary", use_container_width=True)
 
     # --- Expander 2: Process and Results Display ---
