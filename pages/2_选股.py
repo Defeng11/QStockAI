@@ -134,15 +134,18 @@ def main():
                             status_text.info(f"正在获取股票数据... {progress}%") # Fixed: removed newline here # Added newline
                             st.session_state.terminal_logs += f"正在获取股票数据... {progress}%\n" # Append to logs
                             progress_bar.progress(progress // 2) # Half of total progress for data fetching
+                            st.session_state.terminal_logs += f"正在获取股票数据... {progress}%\n" # Append to logs
                         elif "progress_batch_apply_strategy" in value:
                             progress = value["progress_batch_apply_strategy"]
                             status_text.info(f"正在应用策略... {progress}%") # Fixed: removed newline here # Added newline
                             st.session_state.terminal_logs += f"正在应用策略... {progress}%\n" # Append to logs
                             progress_bar.progress(50 + progress // 2) # Second half for strategy application
+                            st.session_state.terminal_logs += f"正在应用策略... {progress}%\n" # Append to logs
                         elif key == "get_universe":
                             status_text.info("正在获取股票池...") # Fixed: removed newline here # Added newline
                             st.session_state.terminal_logs += "正在获取股票池...\n" # Append to logs
                             progress_bar.progress(0)
+                            st.session_state.terminal_logs += "正在获取股票池...\n" # Append to logs
                         elif key == "filter_results":
                             status_text.info("正在筛选结果...") # Fixed: removed newline here # Added newline
                             st.session_state.terminal_logs += "正在筛选结果...\n" # Append to logs
