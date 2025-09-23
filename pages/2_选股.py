@@ -61,7 +61,7 @@ def main():
                 else:
                     # Otherwise, select all
                     st.session_state.selected_industries_checkbox = all_industries.copy()
-                st.experimental_rerun() # Force rerun to update checkbox states
+                st.rerun() # Force rerun to update checkbox states
 
             # --- Checkbox Grid for Industries ---
             num_cols_checkbox = 3 # Number of columns for checkboxes
