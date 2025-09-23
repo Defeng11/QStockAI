@@ -20,32 +20,67 @@ def main():
 
     # --- Expander 1: Filtering Settings and Actions ---
     with st.expander("⚙️ 筛选设置与操作"): # New expander
-        # Date range selection for screening data
-        today = datetime.now()
-        one_year_ago = today - timedelta(days=365)
-        start_date = st.date_input("数据开始日期", value=one_year_ago, min_value=datetime(2010, 1, 1), max_value=today)
-        end_date = st.date_input("数据结束日期", value=today, min_value=start_date, max_value=today)
+        col1, col2 = st.columns(2) # Create two columns
 
-        # Signal type selection
-        signal_type = st.selectbox("信号类型", ["buy", "sell"], format_func=lambda x: "买入信号" if x == "buy" else "卖出信号")
-        
-        # Recent days for signal filtering
-        recent_days = st.slider("信号回溯天数 (最近几天内)", min_value=1, max_value=30, value=5)
+        with col1: # Left column
+            # Date range selection for screening data
+            today = datetime.now()
+            one_year_ago = today - timedelta(days=365)
+            start_date = st.date_input("数据开始日期", value=one_year_ago, min_value=datetime(2010, 1, 1), max_value=today)
+            end_date = st.date_input("数据结束日期", value=today, min_value=start_date, max_value=today)
 
-        st.markdown("---") # Separator
+            # Signal type selection
+            signal_type = st.selectbox("信号类型", ["buy", "sell"], format_func=lambda x: "买入信号" if x == "buy" else "卖出信号")
+            
+            # Recent days for signal filtering
+            recent_days = st.slider("信号回溯天数 (最近几天内)", min_value=1, max_value=30, value=5)
 
-        # Industry/Sector Filtering
-        if st.button("刷新股票池", use_container_width=True):
-            get_stock_universe(force_refresh=True)
-            st.success("股票池已刷新！")
+        with col2: # Right column
+            # Change button text and functionality
+            if st.button("更新板块数据", use_container_width=True): # Changed button text
+                get_stock_universe(force_refresh=True)
+                st.success("股票池已刷新！")
 
-        universe_data = get_stock_universe()
-        all_industries = sorted(list(set([item.get('所属行业', '未知') for item in universe_data])))
-        selected_industries = st.multiselect("选择行业/板块", options=all_industries, default=None)
+            universe_data = get_stock_universe()
+            all_industries = sorted(list(set([item.get('所属行业', '未知') for item in universe_data])))
+            
+            st.markdown("#### 选择行业/板块") # New sub-header for checkboxes
 
-        st.markdown("---") # Separator
+            # --- Select All Button ---
+            select_all_button = st.button("全选/取消全选", key="select_all_industries_button")
 
-        # Action Button
+            # Initialize selected_industries_checkbox in session_state if not present
+            if 'selected_industries_checkbox' not in st.session_state:
+                st.session_state.selected_industries_checkbox = []
+
+            # Handle Select All button click
+            if select_all_button:
+                if len(st.session_state.selected_industries_checkbox) == len(all_industries):
+                    # If all are currently selected, deselect all
+                    st.session_state.selected_industries_checkbox = []
+                else:
+                    # Otherwise, select all
+                    st.session_state.selected_industries_checkbox = all_industries.copy()
+                st.rerun() # Force rerun to update checkbox states
+
+            # --- Checkbox Grid for Industries ---
+            num_cols_checkbox = 3 # Number of columns for checkboxes
+            cols_checkbox = st.columns(num_cols_checkbox)
+            
+            selected_industries_temp = []
+            for i, industry in enumerate(all_industries):
+                with cols_checkbox[i % num_cols_checkbox]: # Place checkbox in a column
+                    # Use a unique key for each checkbox
+                    if st.checkbox(industry, value=(industry in st.session_state.selected_industries_checkbox), key=f"industry_checkbox_{industry}"):
+                        selected_industries_temp.append(industry)
+            
+            # Update the actual selected_industries for the workflow
+            selected_industries = selected_industries_temp
+            st.session_state.selected_industries_checkbox = selected_industries_temp # Store for persistence
+
+        st.markdown("---") # Separator below columns
+
+        # Action Button (outside columns, spans full width)
         start_screening_button = st.button("开始选股", type="primary", use_container_width=True)
 
     # --- Expander 2: Process and Results Display ---
@@ -97,21 +132,24 @@ def main():
                         if "progress_batch_get_data" in value:
                             progress = value["progress_batch_get_data"]
                             status_text.info(f"正在获取股票数据... {progress}%") # Fixed: removed newline here # Added newline
+                            st.session_state.terminal_logs += f"正在获取股票数据... {progress}%\n" # Append to logs
                             progress_bar.progress(progress // 2) # Half of total progress for data fetching
                             st.session_state.terminal_logs += f"正在获取股票数据... {progress}%\n" # Append to logs
                         elif "progress_batch_apply_strategy" in value:
                             progress = value["progress_batch_apply_strategy"]
                             status_text.info(f"正在应用策略... {progress}%") # Fixed: removed newline here # Added newline
+                            st.session_state.terminal_logs += f"正在应用策略... {progress}%\n" # Append to logs
                             progress_bar.progress(50 + progress // 2) # Second half for strategy application
                             st.session_state.terminal_logs += f"正在应用策略... {progress}%\n" # Append to logs
                         elif key == "get_universe":
                             status_text.info("正在获取股票池...") # Fixed: removed newline here # Added newline
+                            st.session_state.terminal_logs += "正在获取股票池...\n" # Append to logs
                             progress_bar.progress(0)
                             st.session_state.terminal_logs += "正在获取股票池...\n" # Append to logs
                         elif key == "filter_results":
                             status_text.info("正在筛选结果...") # Fixed: removed newline here # Added newline
-                            progress_bar.progress(100)
                             st.session_state.terminal_logs += "正在筛选结果...\n" # Append to logs
+                            progress_bar.progress(100)
                         
                         # Note: Real-time update of text_area within stream loop is complex.
                         # This will update st.session_state.terminal_logs, and the text_area
