@@ -46,15 +46,27 @@ def main():
             
             st.markdown("#### 选择行业/板块") # New sub-header for checkboxes
 
+            # --- Select All Button ---
+            select_all_button = st.button("全选/取消全选", key="select_all_industries_button")
+
+            # Initialize selected_industries_checkbox in session_state if not present
+            if 'selected_industries_checkbox' not in st.session_state:
+                st.session_state.selected_industries_checkbox = []
+
+            # Handle Select All button click
+            if select_all_button:
+                if len(st.session_state.selected_industries_checkbox) == len(all_industries):
+                    # If all are currently selected, deselect all
+                    st.session_state.selected_industries_checkbox = []
+                else:
+                    # Otherwise, select all
+                    st.session_state.selected_industries_checkbox = all_industries.copy()
+                st.experimental_rerun() # Force rerun to update checkbox states
+
             # --- Checkbox Grid for Industries ---
             num_cols_checkbox = 3 # Number of columns for checkboxes
             cols_checkbox = st.columns(num_cols_checkbox)
             
-            # Initialize selected_industries in session_state if not present
-            if 'selected_industries_checkbox' not in st.session_state:
-                st.session_state.selected_industries_checkbox = []
-
-            # Create checkboxes and update session state
             selected_industries_temp = []
             for i, industry in enumerate(all_industries):
                 with cols_checkbox[i % num_cols_checkbox]: # Place checkbox in a column
@@ -120,21 +132,21 @@ def main():
                         if "progress_batch_get_data" in value:
                             progress = value["progress_batch_get_data"]
                             status_text.info(f"正在获取股票数据... {progress}%") # Fixed: removed newline here # Added newline
-                            progress_bar.progress(progress // 2) # Half of total progress for data fetching
                             st.session_state.terminal_logs += f"正在获取股票数据... {progress}%\n" # Append to logs
+                            progress_bar.progress(progress // 2) # Half of total progress for data fetching
                         elif "progress_batch_apply_strategy" in value:
                             progress = value["progress_batch_apply_strategy"]
                             status_text.info(f"正在应用策略... {progress}%") # Fixed: removed newline here # Added newline
-                            progress_bar.progress(50 + progress // 2) # Second half for strategy application
                             st.session_state.terminal_logs += f"正在应用策略... {progress}%\n" # Append to logs
+                            progress_bar.progress(50 + progress // 2) # Second half for strategy application
                         elif key == "get_universe":
                             status_text.info("正在获取股票池...") # Fixed: removed newline here # Added newline
-                            progress_bar.progress(0)
                             st.session_state.terminal_logs += "正在获取股票池...\n" # Append to logs
+                            progress_bar.progress(0)
                         elif key == "filter_results":
                             status_text.info("正在筛选结果...") # Fixed: removed newline here # Added newline
-                            progress_bar.progress(100)
                             st.session_state.terminal_logs += "正在筛选结果...\n" # Append to logs
+                            progress_bar.progress(100)
                         
                         # Note: Real-time update of text_area within stream loop is complex.
                         # This will update st.session_state.terminal_logs, and the text_area
