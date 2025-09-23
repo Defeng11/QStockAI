@@ -18,9 +18,8 @@ def main():
     st.title("📊 策略选股")
     st.markdown("根据预设的交易策略，批量筛选符合条件的股票。")
 
-    with st.sidebar:
-        st.header("筛选设置")
-        
+    # --- Expander 1: Filtering Settings and Actions ---
+    with st.expander("⚙️ 筛选设置与操作"): # New expander
         # Date range selection for screening data
         today = datetime.now()
         one_year_ago = today - timedelta(days=365)
@@ -33,24 +32,43 @@ def main():
         # Recent days for signal filtering
         recent_days = st.slider("信号回溯天数 (最近几天内)", min_value=1, max_value=30, value=5)
 
-        st.markdown("---")
-        st.header("行业/板块筛选")
-        
+        st.markdown("---") # Separator
+
+        # Industry/Sector Filtering
         if st.button("刷新股票池", use_container_width=True):
             get_stock_universe(force_refresh=True)
             st.success("股票池已刷新！")
 
-        # Get stock universe to extract industries for filtering
-        # This will use the cached data from screening_handler
         universe_data = get_stock_universe()
         all_industries = sorted(list(set([item.get('所属行业', '未知') for item in universe_data])))
         selected_industries = st.multiselect("选择行业/板块", options=all_industries, default=None)
 
+        st.markdown("---") # Separator
+
+        # Action Button
         start_screening_button = st.button("开始选股", type="primary", use_container_width=True)
-        st.markdown("---")
+
+    # --- Expander 2: Process and Results Display ---
+    with st.expander("📈 选股过程与结果"): # New expander
+        st.markdown("### 筛选过程与结果")
+        
+        # Progress indicators
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        # Placeholder for terminal output
+        if 'terminal_logs' not in st.session_state:
+            st.session_state.terminal_logs = ""
+        
+        # This text_area will be updated *after* the stream completes
+        terminal_output_placeholder = st.empty() # Use st.empty() to hold the text_area
+
+    # --- Sidebar (only disclaimer remains) ---
+    with st.sidebar: # Keep sidebar for disclaimer
         st.header("免责声明")
         st.warning("本项目及所有内容仅供学习研究，不构成任何投资建议。股市有风险，投资需谨慎。")
 
+    # --- Logic for start_screening_button (outside expander context) ---
     if start_screening_button:
         initial_screening_state = {
             "start_date": start_date.strftime("%Y%m%d"),
@@ -60,11 +78,8 @@ def main():
             "selected_industries": selected_industries # Pass selected industries to workflow
         }
         
-        st.markdown("### 筛选过程与结果")
-        
-        # Progress indicators
-        progress_bar = st.progress(0)
-        status_text = st.empty()
+        # Clear logs on new run
+        st.session_state.terminal_logs = "" 
         
         final_screening_state = {}
         try:
@@ -81,24 +96,42 @@ def main():
                         # Update progress bar and status text
                         if "progress_batch_get_data" in value:
                             progress = value["progress_batch_get_data"]
-                            status_text.info(f"正在获取股票数据... {progress}%")
+                            status_text.info(f"正在获取股票数据... {progress}%
+") # Added newline
                             progress_bar.progress(progress // 2) # Half of total progress for data fetching
+                            st.session_state.terminal_logs += f"正在获取股票数据... {progress}%
+" # Append to logs
                         elif "progress_batch_apply_strategy" in value:
                             progress = value["progress_batch_apply_strategy"]
-                            status_text.info(f"正在应用策略... {progress}%")
+                            status_text.info(f"正在应用策略... {progress}%
+") # Added newline
                             progress_bar.progress(50 + progress // 2) # Second half for strategy application
+                            st.session_state.terminal_logs += f"正在应用策略... {progress}%
+" # Append to logs
                         elif key == "get_universe":
-                            status_text.info("正在获取股票池...")
+                            status_text.info("正在获取股票池...
+") # Added newline
                             progress_bar.progress(0)
+                            st.session_state.terminal_logs += "正在获取股票池...
+" # Append to logs
                         elif key == "filter_results":
-                            status_text.info("正在筛选结果...")
-                            progress_bar.progress(100) # Full progress when filtering starts
+                            status_text.info("正在筛选结果...
+") # Added newline
+                            progress_bar.progress(100)
+                            st.session_state.terminal_logs += "正在筛选结果...
+" # Append to logs
+                        
+                        # Note: Real-time update of text_area within stream loop is complex.
+                        # This will update st.session_state.terminal_logs, and the text_area
+                        # will be rendered with the final value after the loop.
 
             # --- Final Display after stream is complete ---
             if final_screening_state and not final_screening_state.get("error"):
                 found_signals = final_screening_state.get("found_signals", [])
                 if found_signals:
                     status_text.success(f"选股完成！成功找到 {len(found_signals)} 个符合条件的股票！")
+                    st.session_state.terminal_logs += f"选股完成！成功找到 {len(found_signals)} 个符合条件的股票！
+"
                     # Convert list of dicts to DataFrame for display
                     signals_df = pd.DataFrame(found_signals)
                     # Reorder columns for better display
@@ -107,15 +140,37 @@ def main():
                     st.dataframe(signals_df, use_container_width=True)
                 else:
                     status_text.info("选股完成！未找到符合当前筛选条件的股票。")
+                    st.session_state.terminal_logs += "选股完成！未找到符合当前筛选条件的股票。
+"
             else:
                 error_message = final_screening_state.get("error", "发生未知错误。")
                 status_text.error(f"选股过程中出现错误: {error_message}")
+                st.session_state.terminal_logs += f"选股过程中出现错误: {error_message}
+"
+
+            # Final update to the text area after the loop
+            terminal_output_placeholder.text_area(
+                "终端输出 (仅显示关键日志)", 
+                value=st.session_state.terminal_logs, 
+                height=300, 
+                disabled=True, 
+                key="final_terminal_output"
+            )
 
         except Exception as e:
             st.error(f"执行选股工作流时发生严重错误: {e}")
+            st.session_state.terminal_logs += f"执行选股工作流时发生严重错误: {e}
+"
+            terminal_output_placeholder.text_area(
+                "终端输出 (仅显示关键日志)", 
+                value=st.session_state.terminal_logs, 
+                height=300, 
+                disabled=True, 
+                key="exception_terminal_output" # Unique key for exception case
+            )
 
     else:
-        st.info("请在左侧设置筛选条件，然后点击“开始选股”按钮。")
+        st.info("请在上方设置筛选条件，然后点击“开始选股”按钮。") # Updated message
 
 if __name__ == "__main__":
     main()
