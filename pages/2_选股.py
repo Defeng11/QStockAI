@@ -98,23 +98,23 @@ def main():
                             progress = value["progress_batch_get_data"]
                             status_text.info(f"正在获取股票数据... {progress}%") # Fixed: removed newline here # Added newline
                             progress_bar.progress(progress // 2) # Half of total progress for data fetching
-                            st.session_state.terminal_logs += f"正在获取股票数据... {progress}%
+                            st.session_state.terminal_logs += f"正在获取股票数据... {progress}%\n"
 " # Append to logs
                         elif "progress_batch_apply_strategy" in value:
                             progress = value["progress_batch_apply_strategy"]
                             status_text.info(f"正在应用策略... {progress}%") # Fixed: removed newline here # Added newline
                             progress_bar.progress(50 + progress // 2) # Second half for strategy application
-                            st.session_state.terminal_logs += f"正在应用策略... {progress}%
+                            st.session_state.terminal_logs += f"正在应用策略... {progress}%\n"
 " # Append to logs
                         elif key == "get_universe":
                             status_text.info("正在获取股票池...") # Fixed: removed newline here # Added newline
                             progress_bar.progress(0)
-                            st.session_state.terminal_logs += "正在获取股票池...
+                            st.session_state.terminal_logs += "正在获取股票池...\n"
 " # Append to logs
                         elif key == "filter_results":
                             status_text.info("正在筛选结果...") # Fixed: removed newline here # Added newline
                             progress_bar.progress(100)
-                            st.session_state.terminal_logs += "正在筛选结果...
+                            st.session_state.terminal_logs += "正在筛选结果...\n"
 " # Append to logs
                         
                         # Note: Real-time update of text_area within stream loop is complex.
@@ -126,7 +126,7 @@ def main():
                 found_signals = final_screening_state.get("found_signals", [])
                 if found_signals:
                     status_text.success(f"选股完成！成功找到 {len(found_signals)} 个符合条件的股票！")
-                    st.session_state.terminal_logs += f"选股完成！成功找到 {len(found_signals)} 个符合条件的股票！
+                    st.session_state.terminal_logs += f"选股完成！成功找到 {len(found_signals)} 个符合条件的股票！\n"
 "
                     # Convert list of dicts to DataFrame for display
                     signals_df = pd.DataFrame(found_signals)
@@ -136,12 +136,12 @@ def main():
                     st.dataframe(signals_df, use_container_width=True)
                 else:
                     status_text.info("选股完成！未找到符合当前筛选条件的股票。")
-                    st.session_state.terminal_logs += "选股完成！未找到符合当前筛选条件的股票。
+                    st.session_state.terminal_logs += "选股完成！未找到符合当前筛选条件的股票。\n"
 "
             else:
                 error_message = final_screening_state.get("error", "发生未知错误。")
                 status_text.error(f"选股过程中出现错误: {error_message}")
-                st.session_state.terminal_logs += f"选股过程中出现错误: {error_message}
+                st.session_state.terminal_logs += f"选股过程中出现错误: {error_message}\n"
 "
 
             # Final update to the text area after the loop
@@ -155,7 +155,7 @@ def main():
 
         except Exception as e:
             st.error(f"执行选股工作流时发生严重错误: {e}")
-            st.session_state.terminal_logs += f"执行选股工作流时发生严重错误: {e}
+            st.session_state.terminal_logs += f"执行选股工作流时发生严重错误: {e}\n"
 "
             terminal_output_placeholder.text_area(
                 "终端输出 (仅显示关键日志)", 
