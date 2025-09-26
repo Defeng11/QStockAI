@@ -157,6 +157,52 @@ def batch_apply_strategy(data_dict: Dict[str, pd.DataFrame], max_workers: int = 
     return processed_data
 
 
+def _prepare_detailed_signals_for_display(df_with_signals: pd.DataFrame, recent_days: int) -> pd.DataFrame:
+    """
+    Prepares a DataFrame for displaying detailed buy/sell signals over recent days.
+
+    Args:
+        df_with_signals (pd.DataFrame): DataFrame for a single stock with 'date' and 'signal' columns.
+        recent_days (int): The number of recent days to look back for signals.
+
+    Returns:
+        pd.DataFrame: A DataFrame formatted for display, with '信号类型' as index
+                      and dates as columns, containing '✅' for signal or '—' for no signal.
+    """
+    if df_with_signals.empty or 'signal' not in df_with_signals.columns or 'date' not in df_with_signals.columns:
+        return pd.DataFrame()
+
+    # Ensure 'date' is datetime and sort
+    df_with_signals['date'] = pd.to_datetime(df_with_signals['date'])
+    df_with_signals = df_with_signals.sort_values(by='date', ascending=False)
+
+    # Get the most recent 'recent_days' dates
+    latest_date = df_with_signals['date'].max()
+    start_date_window = latest_date - pd.Timedelta(days=recent_days - 1) # -1 because latest_date is included
+
+    df_window = df_with_signals[df_with_signals['date'] >= start_date_window].copy()
+    
+    # Create a date range for all recent days, even if no data exists for some
+    all_dates_in_window = pd.date_range(start=start_date_window, end=latest_date, freq='D')
+    all_dates_in_window_str = [d.strftime('%Y-%m-%d') for d in all_dates_in_window]
+
+    # Initialize display DataFrame
+    display_df = pd.DataFrame(index=['买入信号', '卖出信号'], columns=all_dates_in_window_str)
+    display_df = display_df.fillna('—') # Fill with no signal marker
+
+    for _, row in df_window.iterrows():
+        date_str = row['date'].strftime('%Y-%m-%d')
+        if row['signal'] == 1:
+            display_df.loc['买入信号', date_str] = '✅'
+        elif row['signal'] == -1:
+            display_df.loc['卖出信号', date_str] = '✅'
+            
+    # Ensure columns are sorted chronologically
+    display_df = display_df[sorted(display_df.columns)]
+
+    return display_df
+
+
 def filter_signals(data_dict: Dict[str, pd.DataFrame], stock_names_map: Dict[str, str], stock_industry_map: Dict[str, str], signal_type: str = 'buy', recent_days: int = 5) -> List[Dict]:
     """
     Filters stocks based on generated signals within recent days, including stock name and industry.
