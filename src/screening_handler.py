@@ -101,38 +101,58 @@ def batch_get_stock_daily(stock_list: List[str], start_date: str, end_date: str,
     return all_stock_data
 
 
-def batch_apply_strategy(data_dict: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
+def _apply_strategy_to_single_stock(args):
     """
-    Applies the five-step integrated strategy to each stock's DataFrame in the dictionary.
-    This now includes calculating the necessary indicators before applying the strategy.
+    Helper function to calculate indicators and apply strategy for a single stock.
+    To be used by a ThreadPoolExecutor.
+    """
+    stock_code, df = args
+    try:
+        # Step 1: Calculate indicators required by the strategy
+        df_with_indicators = calculate_strategy_indicators(df)
+        
+        # Step 2: Apply the actual strategy function
+        df_with_signals = apply_five_step_integrated_strategy(df_with_indicators)
+        return stock_code, df_with_signals
+    except Exception as e:
+        print(f"    对 {stock_code} 应用策略时发生错误: {e}")
+        return stock_code, None
+
+def batch_apply_strategy(data_dict: Dict[str, pd.DataFrame], max_workers: int = 10) -> Dict[str, pd.DataFrame]:
+    """
+    Applies the five-step integrated strategy to each stock's DataFrame in the dictionary
+    using multithreading.
 
     Args:
         data_dict (Dict[str, pd.DataFrame]): Dictionary of stock codes to their raw DataFrames.
+        max_workers (int): The number of concurrent threads to use.
 
     Returns:
         Dict[str, pd.DataFrame]: Dictionary with strategy applied and 'signal' column added.
     """
     total_stocks = len(data_dict)
-    print("正在批量应用策略...")
-    processed_data = {}
-    for i, (stock_code, df) in enumerate(data_dict.items()):
-        # Calculate progress percentage
-        progress_percent = int(((i + 1) / total_stocks) * 100)
-        print(f"PROGRESS_BATCH_APPLY_STRATEGY:{progress_percent}", flush=True)
+    if total_stocks == 0:
+        print("股票数据为空，无需应用策略。")
+        return {}
 
-        if not df.empty:
-            print(f"  对 {stock_code} 应用策略 ({i+1}/{total_stocks})... ")
-            try:
-                # Step 1: Calculate indicators required by the strategy
-                df_with_indicators = calculate_strategy_indicators(df)
-                
-                # Step 2: Apply the actual strategy function
-                df_with_signals = apply_five_step_integrated_strategy(df_with_indicators)
+    print(f"正在通过 {max_workers} 个线程，批量应用策略到 {total_stocks} 只股票...")
+    processed_data = {}
+    
+    tasks = [(code, df) for code, df in data_dict.items()]
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = executor.map(_apply_strategy_to_single_stock, tasks)
+        
+        completed_count = 0
+        for stock_code, df_with_signals in results:
+            if df_with_signals is not None:
                 processed_data[stock_code] = df_with_signals
-            except Exception as e:
-                print(f"    对 {stock_code} 应用策略时发生错误: {e}")
-        else:
-            print(f"  跳过 {stock_code}，数据为空。")
+            
+            completed_count += 1
+            progress_percent = int((completed_count / total_stocks) * 100)
+            print(f"PROGRESS_BATCH_APPLY_STRATEGY:{progress_percent}", flush=True)
+            print(f"  进度: {completed_count}/{total_stocks} ({progress_percent}%)", flush=True)
+
     print("批量策略应用完成。")
     return processed_data
 
