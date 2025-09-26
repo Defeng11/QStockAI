@@ -126,3 +126,16 @@ cython_debug/
 # IDE settings
 .vscode/
 .vs/
+
+# Custom ignores for local files
+# ---------------------------------
+# Local scripts and documents
+aq.py
+AI选股Agent工具方案文档.txt
+为了解决在使用AkShare库获取A股股票代码、名称及其行业分类.ini
+temp_stock_data.csv
+选股脚本测试/
+诊股测试脚本/
+test_results/
+cache/
+test_cache/
