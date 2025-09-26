@@ -126,3 +126,27 @@ cython_debug/
 # IDE settings
 .vscode/
 .vs/
+
+# Custom ignores for local files
+# ---------------------------------
+# Local scripts and documents
+aq.py
+AI选股Agent工具方案文档.txt
+为了解决在使用AkShare库获取A股股票代码、名称及其行业分类.ini
+temp_stock_data.csv
+项目状态报告.txt
+
+# Test scripts and cache
+选股脚本测试/
+诊股测试脚本/
+test_results/
+cache/
+test_cache/
+test_akshare.py
+test_combined_workflow.py
+test_industry_data.py
+test_step1_fetch_data.py
+test_step2_calculate_indicators.py
+
+# Gemini specific files
+GEMINI.md
