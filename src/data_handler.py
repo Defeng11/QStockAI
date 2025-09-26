@@ -12,6 +12,7 @@ import os     # For path manipulation
 import json
 import time
 from typing import List, Dict
+import concurrent.futures # For ThreadPoolExecutor
 
 # --- Constants ---
 
@@ -156,12 +157,27 @@ def get_stock_universe(force_refresh: bool = False) -> List[Dict]:
             raise ValueError("AkShare stock_board_industry_name_em() 返回数据无效")
 
         total_industries = len(industry_summary_df)
-        for i, row in industry_summary_df.iterrows():
-            industry_name = row['板块名称']
-            print(f"  正在获取行业 '{industry_name}' 的股票 ({i+1}/{total_industries})...")
+        print(f"  发现 {total_industries} 个行业，将并发获取成分股...")
+
+        # Helper function for concurrent fetching of industry constituents
+        def _fetch_industry_constituents(industry_name):
             try:
                 cons_df = ak.stock_board_industry_cons_em(symbol=industry_name)
                 if not cons_df.empty and '代码' in cons_df.columns and '名称' in cons_df.columns:
+                    return industry_name, cons_df
+                return industry_name, pd.DataFrame() # Return empty if no data
+            except Exception as e:
+                print(f"    获取行业 '{industry_name}' 股票时出错: {e}")
+                return industry_name, pd.DataFrame()
+
+        # Use ThreadPoolExecutor for concurrent fetching
+        # Set max_workers to 5 as requested
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            # Map the _fetch_industry_constituents function to each industry
+            results = executor.map(_fetch_industry_constituents, industry_summary_df['板块名称'])
+
+            for industry_name, cons_df in results:
+                if not cons_df.empty:
                     for _, stock_row in cons_df.iterrows():
                         stock_code_clean = str(stock_row['代码']).split('.')[0]
                         stock_data.append({
@@ -170,10 +186,7 @@ def get_stock_universe(force_refresh: bool = False) -> List[Dict]:
                             '所属行业': industry_name
                         })
                 else:
-                    print(f"    警告: 行业 '{industry_name}' 未获取到股票数据。")
-            except Exception as e:
-                print(f"    获取行业 '{industry_name}' 股票时出错: {e}")
-            time.sleep(1)
+                    print(f"    警告: 行业 '{industry_name}' 未获取到股票数据或获取失败。")
 
         if not stock_data:
             raise ValueError("未能从东方财富行业板块获取任何股票数据")
