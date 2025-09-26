@@ -10,7 +10,7 @@ import pandas as pd
 
 # Import the screening workflow app
 from src.screening_workflow import screening_app
-from src.screening_handler import get_stock_universe
+from src.screening_handler import get_stock_universe, _prepare_detailed_signals_for_display
 
 def main():
     st.set_page_config(page_title="策略选股", layout="wide")
@@ -124,6 +124,10 @@ def main():
                     st.error("错误：选股工作流流式处理返回了 None。请检查工作流配置或API Key。")
                     return
 
+                # Initialize progress for the entire workflow (e.g., 4 main steps)
+                total_progress_steps = 4 # get_universe, batch_get_data, batch_apply_strategy, filter_results
+                current_overall_progress = 0
+
                 for event in stream_result:
                     for key, value in event.items():
                         final_screening_state.update(value)
@@ -131,25 +135,26 @@ def main():
                         # Update progress bar and status text
                         if "progress_batch_get_data" in value:
                             progress = value["progress_batch_get_data"]
-                            status_text.info(f"正在获取股票数据... {progress}%") # Fixed: removed newline here # Added newline
-                            st.session_state.terminal_logs += f"正在获取股票数据... {progress}%\n" # Append to logs
-                            progress_bar.progress(progress // 2) # Half of total progress for data fetching
-                            st.session_state.terminal_logs += f"正在获取股票数据... {progress}%\n" # Append to logs
+                            # Data fetching is roughly 25% of total progress
+                            overall_progress = int(progress * 0.25)
+                            status_text.info(f"正在获取股票数据... {progress}%")
+                            st.session_state.terminal_logs += f"正在获取股票数据... {progress}%\n"
+                            progress_bar.progress(overall_progress)
                         elif "progress_batch_apply_strategy" in value:
                             progress = value["progress_batch_apply_strategy"]
-                            status_text.info(f"正在应用策略... {progress}%") # Fixed: removed newline here # Added newline
-                            st.session_state.terminal_logs += f"正在应用策略... {progress}%\n" # Append to logs
-                            progress_bar.progress(50 + progress // 2) # Second half for strategy application
-                            st.session_state.terminal_logs += f"正在应用策略... {progress}%\n" # Append to logs
+                            # Strategy application is roughly 50% of total progress (25% to 75%)
+                            overall_progress = int(25 + progress * 0.50)
+                            status_text.info(f"正在应用策略... {progress}%")
+                            st.session_state.terminal_logs += f"正在应用策略... {progress}%\n"
+                            progress_bar.progress(overall_progress)
                         elif key == "get_universe":
-                            status_text.info("正在获取股票池...") # Fixed: removed newline here # Added newline
-                            st.session_state.terminal_logs += "正在获取股票池...\n" # Append to logs
-                            progress_bar.progress(0)
-                            st.session_state.terminal_logs += "正在获取股票池...\n" # Append to logs
+                            status_text.info("正在获取股票池...")
+                            st.session_state.terminal_logs += "正在获取股票池...\n"
+                            progress_bar.progress(0) # Start of workflow
                         elif key == "filter_results":
-                            status_text.info("正在筛选结果...") # Fixed: removed newline here # Added newline
-                            st.session_state.terminal_logs += "正在筛选结果...\n" # Append to logs
-                            progress_bar.progress(100)
+                            status_text.info("正在筛选结果...")
+                            st.session_state.terminal_logs += "正在筛选结果...\n"
+                            progress_bar.progress(90) # Before final display
                         
                         # Note: Real-time update of text_area within stream loop is complex.
                         # This will update st.session_state.terminal_logs, and the text_area
@@ -161,19 +166,53 @@ def main():
                 if found_signals:
                     status_text.success(f"选股完成！成功找到 {len(found_signals)} 个符合条件的股票！")
                     st.session_state.terminal_logs += f"选股完成！成功找到 {len(found_signals)} 个符合条件的股票！\n"
+                    progress_bar.progress(100) # Final completion
+
+                    st.markdown("#### 筛选结果概览")
                     # Convert list of dicts to DataFrame for display
                     signals_df = pd.DataFrame(found_signals)
                     # Reorder columns for better display
                     display_cols = ['stock_code', 'stock_name', 'industry', 'signal_date', 'signal_type']
                     signals_df = signals_df[display_cols]
                     st.dataframe(signals_df, use_container_width=True)
+
+                    st.markdown("#### 信号详情")
+                    # Group signals by stock for detailed display
+                    # Need to get processed_stock_data from final_screening_state
+                    processed_stock_data = final_screening_state.get("processed_stock_data", {})
+                    
+                    # Get unique stocks that have signals
+                    unique_signal_stocks = signals_df[['stock_code', 'stock_name', 'industry', 'signal_type']].drop_duplicates()
+
+                    for _, stock_row in unique_signal_stocks.iterrows():
+                        stock_code = stock_row['stock_code']
+                        stock_name = stock_row['stock_name']
+                        industry = stock_row['industry']
+                        latest_signal_type = stock_row['signal_type'] # This is the type of signal that triggered the stock to be in found_signals
+
+                        if stock_code in processed_stock_data:
+                            df_with_signals = processed_stock_data[stock_code]
+                            
+                            # Prepare detailed signal data for display
+                            detailed_signals_df = _prepare_detailed_signals_for_display(df_with_signals, recent_days)
+
+                            if not detailed_signals_df.empty:
+                                with st.expander(f"📈 {stock_code} - {stock_name} ({industry})"):
+                                    st.dataframe(detailed_signals_df, use_container_width=True)
+                            else:
+                                st.info(f"股票 {stock_code} - {stock_name} 在回溯期内没有详细信号数据。")
+                        else:
+                            st.warning(f"未找到股票 {stock_code} - {stock_name} 的处理数据。")
+
                 else:
                     status_text.info("选股完成！未找到符合当前筛选条件的股票。")
                     st.session_state.terminal_logs += "选股完成！未找到符合当前筛选条件的股票。\n"
+                    progress_bar.progress(100)
             else:
                 error_message = final_screening_state.get("error", "发生未知错误。")
                 status_text.error(f"选股过程中出现错误: {error_message}")
                 st.session_state.terminal_logs += f"选股过程中出现错误: {error_message}\n"
+                progress_bar.progress(100)
 
             # Final update to the text area after the loop
             terminal_output_placeholder.text_area(
