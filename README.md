@@ -2,7 +2,7 @@
 
 > "The universe is not only stranger than we imagine, it is stranger than we can imagine." - Werner Heisenberg
 
-LiangZiXuanGu is not merely a stock analysis tool; it is a digital oracle for the financial cosmos. It listens to the market's subtle whispers and complex data streams, seeking to decipher the signal from the noise. By harnessing the analytical power of quantitative models and the inferential capabilities of advanced AI agents, this project attempts to illuminate potential future trajectories hidden within the chaos of stock fluctuations.
+QStockAI is not merely a stock analysis tool; it is a digital oracle for the financial cosmos. It listens to the market's subtle whispers and complex data streams, seeking to decipher the signal from the noise. By harnessing the analytical power of quantitative models and the inferential capabilities of advanced AI agents, this project attempts to illuminate potential future trajectories hidden within the chaos of stock fluctuations.
 
 This is an exploration into the art of financial divination, powered by code.
 
@@ -16,6 +16,9 @@ This is an exploration into the art of financial divination, powered by code.
 *   **多线程加速 (Multi-threaded Acceleration)**: 在批量获取数据时采用并发处理，显著缩短等待时间，提升操作效率。
 *   **AI Agent 策略分析 (AI Agent Strategy Analysis)**: 基于 `LangGraph` 构建核心分析引擎，模拟专家行为，对股票进行深度分析和信号研判。
 *   **交互式Web界面 (Interactive Web UI)**: 通过 `Streamlit` 构建了多页面Web应用，提供“诊股”与“选股”两大核心功能模块，操作直观。
+
+---
+建议完整下载通达信【盘后数据】、【财报数据】可直接调用。TDX_ROOT_PATH = "D:\\new_tdx\\"
 
 ## 项目结构 (Project Structure)
 
