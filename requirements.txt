@@ -1,21 +1,26 @@
-# Core Dependencies
-langchain
-langgraph
+# Core Web Framework
 streamlit
-akshare
-baostock
-pandas
-numpy
 plotly
 
-# LLM & LangChain Integrations
-dashscope
-langchain-community
+# Data Processing
+pandas
+numpy
+
+# Stock Data Sources
+akshare
+baostock
 
 # Technical Analysis
-# The following library was installed manually from a .whl file
-# due to compilation issues on Windows.
 TA-Lib==0.6.7
+
+# LangGraph (最新版本)
+langgraph
+
+# OpenAI-compatible LLM Clients (支持 MiniMax, Qwen, OpenAI, Anthropic 等)
+langchain-openai
+
+# Environment Management
+python-dotenv
 
 # Testing
 pytest
